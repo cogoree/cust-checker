@@ -3,59 +3,116 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#007aff">
+<meta name="theme-color" content="#1976d2">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="미세먼지">
 <title>미세먼지 체커</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌫️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --md-primary: #1976d2;
+    --md-primary-light: #42a5f5;
+    --md-primary-dark: #0d47a1;
+    --md-surface: #ffffff;
+    --md-surface-variant: #f5f5f7;
+    --md-on-surface: #1c1b1f;
+    --md-on-surface-variant: #49454e;
+    --md-outline: #cac4d0;
+    --md-bg: #fafafa;
+    --md-elevation-1: 0 1px 2px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.10);
+    --md-elevation-2: 0 1px 2px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.10);
+    --md-elevation-3: 0 1px 3px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.12);
+  }
+
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
-    background: #f5f5f7;
-    color: #1d1d1f;
+    font-family: 'Roboto', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--md-bg);
+    color: var(--md-on-surface);
     min-height: 100vh;
     padding: 16px;
     padding-bottom: env(safe-area-inset-bottom, 16px);
+    line-height: 1.4;
   }
   .container { max-width: 720px; margin: 0 auto; }
-  header { text-align: center; padding: 12px 0 20px; }
-  h1 { font-size: 22px; font-weight: 700; }
-  .subtitle { font-size: 13px; color: #86868b; margin-top: 4px; }
 
+  /* 헤더 */
+  header {
+    text-align: center;
+    padding: 16px 0 24px;
+  }
+  h1 {
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: -0.3px;
+    color: var(--md-on-surface);
+  }
+  .subtitle {
+    font-size: 13px;
+    color: var(--md-on-surface-variant);
+    margin-top: 6px;
+    letter-spacing: 0.2px;
+  }
+
+  /* 검색 바 (Material outlined text field 스타일) */
   .search-box {
-    background: white;
-    border-radius: 14px;
-    padding: 12px;
+    background: var(--md-surface);
+    border-radius: 28px;
+    padding: 4px 4px 4px 20px;
     margin-bottom: 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    box-shadow: var(--md-elevation-1);
     display: flex;
     gap: 8px;
+    align-items: center;
+    transition: box-shadow 0.2s;
+  }
+  .search-box:focus-within {
+    box-shadow: var(--md-elevation-2);
+  }
+  .search-icon {
+    color: var(--md-on-surface-variant);
+    font-size: 18px;
+    user-select: none;
   }
   .search-box input {
     flex: 1;
     border: none;
     outline: none;
     font-size: 15px;
-    padding: 8px 10px;
-    background: #f5f5f7;
-    border-radius: 10px;
+    padding: 12px 0;
+    background: transparent;
+    font-family: inherit;
+    color: var(--md-on-surface);
   }
+  .search-box input::placeholder { color: var(--md-on-surface-variant); }
   .search-box button {
     border: none;
-    background: #007aff;
+    background: var(--md-primary);
     color: white;
-    padding: 0 16px;
-    border-radius: 10px;
+    padding: 0 20px;
+    height: 40px;
+    border-radius: 20px;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: background 0.2s, box-shadow 0.2s;
+    font-family: inherit;
   }
-  .search-box button:active { opacity: 0.7; }
+  .search-box button:hover { background: var(--md-primary-light); }
+  .search-box button:active {
+    background: var(--md-primary-dark);
+    box-shadow: var(--md-elevation-2);
+  }
 
+  /* 칩 (Material Chip) */
   .quick-cities {
     display: flex;
-    gap: 6px;
+    gap: 8px;
     overflow-x: auto;
     padding-bottom: 8px;
     margin-bottom: 16px;
@@ -64,84 +121,171 @@
   .quick-cities::-webkit-scrollbar { display: none; }
   .quick-city {
     flex-shrink: 0;
-    background: white;
-    border: none;
-    padding: 8px 14px;
-    border-radius: 18px;
+    background: var(--md-surface);
+    border: 1px solid var(--md-outline);
+    padding: 8px 16px;
+    border-radius: 8px;
     font-size: 13px;
+    font-weight: 500;
     cursor: pointer;
-    color: #1d1d1f;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    color: var(--md-on-surface);
+    font-family: inherit;
+    transition: background 0.2s, border-color 0.2s;
+    letter-spacing: 0.2px;
   }
-  .quick-city:active { background: #e8e8ed; }
+  .quick-city:hover { background: var(--md-surface-variant); }
+  .quick-city:active {
+    background: rgba(25, 118, 210, 0.08);
+    border-color: var(--md-primary);
+    color: var(--md-primary);
+  }
 
   .section-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #86868b;
-    margin: 16px 4px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--md-on-surface-variant);
+    margin: 20px 4px 10px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
   }
 
+  /* Material Card */
   .card {
-    background: white;
+    background: var(--md-surface);
     border-radius: 16px;
-    padding: 18px;
+    padding: 20px;
     margin-bottom: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    box-shadow: var(--md-elevation-1);
+    transition: box-shadow 0.2s;
   }
   .card-head {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
     gap: 8px;
   }
-  .city-name { font-size: 17px; font-weight: 600; }
-  .station-name { font-size: 11px; color: #86868b; margin-top: 2px; }
-  .updated { font-size: 11px; color: #86868b; margin-top: 2px; }
+  .city-name {
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: -0.2px;
+  }
+  .station-name {
+    font-size: 12px;
+    color: var(--md-on-surface-variant);
+    margin-top: 4px;
+    letter-spacing: 0.2px;
+  }
+  .updated {
+    font-size: 11px;
+    color: var(--md-on-surface-variant);
+    margin-top: 2px;
+    letter-spacing: 0.3px;
+  }
   .card-actions { display: flex; gap: 4px; flex-shrink: 0; }
   .icon-btn {
     border: none;
     background: transparent;
     cursor: pointer;
-    padding: 6px;
+    padding: 8px;
     font-size: 18px;
-    color: #86868b;
-    border-radius: 8px;
-    min-width: 32px;
+    color: var(--md-on-surface-variant);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    font-family: inherit;
   }
-  .icon-btn:active { background: #f0f0f3; }
-  .icon-btn.starred { color: #ffb800; }
+  .icon-btn:hover { background: rgba(0, 0, 0, 0.04); }
+  .icon-btn:active { background: rgba(0, 0, 0, 0.08); }
+  .icon-btn.starred { color: #ffa726; }
 
-  .grade-display {
+  /* 등급 표시 영역 (메인 - 통합) */
+  .main-display {
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 12px;
+    color: white;
+  }
+  .main-top {
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 14px;
-    border-radius: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
   }
-  .grade-emoji { font-size: 44px; }
-  .grade-info { flex: 1; }
-  .grade-label { font-size: 22px; font-weight: 700; line-height: 1.1; }
-  .grade-desc { font-size: 12px; margin-top: 4px; opacity: 0.9; }
+  .grade-emoji { font-size: 48px; line-height: 1; }
+  .grade-info { flex: 1; min-width: 0; }
+  .grade-label {
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: -0.3px;
+    line-height: 1.1;
+  }
+  .grade-desc {
+    font-size: 12px;
+    margin-top: 6px;
+    opacity: 0.95;
+    letter-spacing: 0.1px;
+  }
 
-  .pollutants { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .pollutant { background: #f5f5f7; border-radius: 10px; padding: 10px 12px; }
-  .pollutant-label { font-size: 11px; color: #86868b; font-weight: 500; }
-  .pollutant-value { font-size: 18px; font-weight: 700; margin-top: 2px; }
-  .pollutant-unit { font-size: 11px; color: #86868b; font-weight: 400; margin-left: 2px; }
-  .pollutant-grade { font-size: 11px; font-weight: 600; margin-top: 2px; }
+  /* 메인 영역 안의 PM 표시 */
+  .main-pollutants {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.25);
+  }
+  .main-pollutant {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+    padding: 10px 14px;
+    backdrop-filter: blur(10px);
+  }
+  .main-pollutant-label {
+    font-size: 11px;
+    font-weight: 500;
+    opacity: 0.9;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .main-pollutant-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .main-pollutant-value {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+  .main-pollutant-unit {
+    font-size: 10px;
+    opacity: 0.8;
+  }
+  .main-pollutant-grade {
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 3px;
+    opacity: 0.95;
+  }
+
+  /* 노란색 배경에서는 어두운 텍스트 */
+  .main-display.g3 { color: #5d4500; }
+  .main-display.g3 .main-pollutant { background: rgba(0, 0, 0, 0.08); }
+  .main-display.g3 .main-pollutants { border-top-color: rgba(0, 0, 0, 0.15); }
 
   /* 날씨 영역 */
   .weather-row {
     display: flex;
-    gap: 12px;
-    padding: 10px 12px;
-    background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
-    border-radius: 10px;
+    gap: 8px;
+    padding: 12px 14px;
+    background: var(--md-surface-variant);
+    border-radius: 12px;
     margin-bottom: 10px;
     align-items: center;
     flex-wrap: wrap;
@@ -149,56 +293,56 @@
   .weather-item {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     font-size: 13px;
-    color: #1d1d1f;
+    color: var(--md-on-surface);
   }
   .weather-icon { font-size: 16px; }
-  .weather-value { font-weight: 600; }
-  .weather-label { font-size: 11px; color: #86868b; }
+  .weather-value { font-weight: 500; }
+  .weather-label { font-size: 11px; color: var(--md-on-surface-variant); }
 
-  /* 추가 대기 정보 */
+  /* 추가 대기 정보 (4열) */
   .extra-pollutants {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 6px;
-    margin-top: 8px;
   }
   .extra-pollutant {
-    background: #f9f9fb;
-    border-radius: 8px;
-    padding: 8px 6px;
+    background: var(--md-surface-variant);
+    border-radius: 12px;
+    padding: 10px 4px;
     text-align: center;
-    border: 1px solid #ececf0;
+    min-width: 0;
   }
   .extra-label {
     font-size: 10px;
-    color: #86868b;
+    color: var(--md-on-surface-variant);
     font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.3px;
   }
   .extra-value {
-    font-size: 14px;
-    font-weight: 700;
-    margin-top: 2px;
-  }
-  .extra-unit { font-size: 9px; color: #86868b; font-weight: 400; }
-  @media (max-width: 380px) {
-    .extra-pollutants { grid-template-columns: repeat(2, 1fr); }
+    font-size: 16px;
+    font-weight: 500;
+    margin-top: 4px;
+    letter-spacing: -0.3px;
   }
 
   .loading, .error {
     text-align: center;
-    padding: 30px 16px;
-    color: #86868b;
+    padding: 32px 16px;
+    color: var(--md-on-surface-variant);
     font-size: 14px;
   }
-  .error { color: #ff3b30; padding: 16px; }
+  .error { color: #d32f2f; padding: 16px; }
   .spinner {
     display: inline-block;
     width: 20px;
     height: 20px;
-    border: 2px solid #e0e0e5;
-    border-top-color: #007aff;
+    border: 2.5px solid #e0e0e5;
+    border-top-color: var(--md-primary);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
     margin-right: 8px;
@@ -206,24 +350,46 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* 등급표 (Material Card) */
   .legend {
-    background: white;
-    border-radius: 14px;
-    padding: 16px;
-    margin-top: 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    background: var(--md-surface);
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 24px;
+    box-shadow: var(--md-elevation-1);
   }
-  .legend-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+  .legend-title {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 12px;
+    letter-spacing: 0.1px;
+  }
   .legend-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     font-size: 12px;
-    padding: 5px 0;
+    padding: 6px 0;
   }
-  .legend-color { width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0; }
-  .legend-name { font-weight: 600; min-width: 70px; }
-  .legend-range { color: #86868b; font-size: 11px; }
+  .legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .legend-name { font-weight: 500; min-width: 70px; }
+  .legend-range { color: var(--md-on-surface-variant); font-size: 11px; }
+
+  footer {
+    text-align: center;
+    margin-top: 24px;
+    padding: 16px;
+    font-size: 11px;
+    color: var(--md-on-surface-variant);
+    line-height: 1.6;
+    letter-spacing: 0.2px;
+  }
+  footer a { color: var(--md-primary); text-decoration: none; }
 
   /* 스와이프 뷰 */
   .swipe-container {
@@ -237,40 +403,34 @@
     transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     will-change: transform;
   }
-  .swipe-track.dragging {
-    transition: none;
-  }
-  .swipe-track.locked-horizontal {
-    touch-action: none;
-  }
+  .swipe-track.dragging { transition: none; }
+  .swipe-track.locked-horizontal { touch-action: none; }
   .swipe-slide {
     flex: 0 0 100%;
     width: 100%;
     min-width: 0;
   }
-  .swipe-slide .card {
-    margin-bottom: 0;
-  }
+  .swipe-slide .card { margin-bottom: 0; }
   .swipe-dots {
     display: flex;
     justify-content: center;
     gap: 6px;
-    margin-top: 10px;
+    margin-top: 12px;
     margin-bottom: 8px;
   }
   .swipe-dot {
-    width: 7px;
-    height: 7px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
-    background: #d0d0d5;
+    background: var(--md-outline);
     cursor: pointer;
     transition: all 0.2s;
     border: none;
     padding: 0;
   }
   .swipe-dot.active {
-    background: #007aff;
-    width: 22px;
+    background: var(--md-primary);
+    width: 24px;
     border-radius: 4px;
   }
   .swipe-nav {
@@ -282,71 +442,63 @@
   }
   .swipe-counter {
     font-size: 12px;
-    color: #86868b;
+    color: var(--md-on-surface-variant);
     font-weight: 500;
+    letter-spacing: 0.5px;
   }
-  .swipe-arrows {
-    display: flex;
-    gap: 4px;
-  }
+  .swipe-arrows { display: flex; gap: 4px; }
   .swipe-arrow {
-    background: white;
+    background: var(--md-surface);
     border: none;
-    width: 28px;
-    height: 28px;
-    border-radius: 14px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
     cursor: pointer;
-    font-size: 14px;
-    color: #1d1d1f;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    font-size: 16px;
+    color: var(--md-on-surface);
+    box-shadow: var(--md-elevation-1);
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: box-shadow 0.2s, background 0.2s;
   }
-  .swipe-arrow:active { background: #e8e8ed; }
+  .swipe-arrow:hover { background: var(--md-surface-variant); }
+  .swipe-arrow:active { box-shadow: var(--md-elevation-2); }
   .swipe-arrow:disabled { opacity: 0.3; cursor: default; }
-
-  footer {
-    text-align: center;
-    margin-top: 24px;
-    padding: 16px;
-    font-size: 11px;
-    color: #86868b;
-    line-height: 1.6;
-  }
-  footer a { color: #007aff; text-decoration: none; }
-
-  .g0 { background: #4a90e2; color: white; }
-  .g1 { background: #5cb85c; color: white; }
-  .g2 { background: #8bc34a; color: white; }
-  .g3 { background: #ffc107; color: #5d4500; }
-  .g4 { background: #ff9800; color: white; }
-  .g5 { background: #ff5722; color: white; }
-  .g6 { background: #d32f2f; color: white; }
-  .g7 { background: #4a148c; color: white; }
-
-  .grade-text-0 { color: #4a90e2; }
-  .grade-text-1 { color: #5cb85c; }
-  .grade-text-2 { color: #8bc34a; }
-  .grade-text-3 { color: #f0a500; }
-  .grade-text-4 { color: #ff9800; }
-  .grade-text-5 { color: #ff5722; }
-  .grade-text-6 { color: #d32f2f; }
-  .grade-text-7 { color: #4a148c; }
 
   .station-list {
     margin-top: 8px;
     padding: 8px;
-    background: #f5f5f7;
-    border-radius: 8px;
-    font-size: 12px;
+    background: var(--md-surface-variant);
+    border-radius: 12px;
+    font-size: 13px;
   }
   .station-item {
-    padding: 6px 8px;
+    padding: 10px 12px;
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: 8px;
+    transition: background 0.2s;
   }
-  .station-item:hover, .station-item:active { background: #e8e8ed; }
+  .station-item:hover, .station-item:active { background: rgba(0, 0, 0, 0.04); }
+
+  /* 색상 (8단계) - Material 색상 팔레트 */
+  .g0 { background: #1976d2; }
+  .g1 { background: #43a047; }
+  .g2 { background: #7cb342; }
+  .g3 { background: #fdd835; }
+  .g4 { background: #fb8c00; }
+  .g5 { background: #f4511e; }
+  .g6 { background: #e53935; }
+  .g7 { background: #424242; }
+
+  .grade-text-0 { color: #1976d2; }
+  .grade-text-1 { color: #43a047; }
+  .grade-text-2 { color: #7cb342; }
+  .grade-text-3 { color: #f9a825; }
+  .grade-text-4 { color: #fb8c00; }
+  .grade-text-5 { color: #f4511e; }
+  .grade-text-6 { color: #e53935; }
+  .grade-text-7 { color: #424242; }
 </style>
 </head>
 <body>
@@ -357,6 +509,7 @@
   </header>
 
   <div class="search-box">
+    <span class="search-icon">🔍</span>
     <input type="text" id="searchInput" placeholder="예: 야탑동, 분당구, 서울, 인천" />
     <button id="searchBtn">검색</button>
   </div>
@@ -450,7 +603,7 @@ function aqiToPm10(aqi) {
   return null;
 }
 
-// ============ 즐겨찾기 (localStorage) ============
+// ============ 즐겨찾기 ============
 let favorites = [];
 const STORAGE_KEY = 'dust_checker_favorites';
 
@@ -513,16 +666,14 @@ function parseWaqiResponse(d) {
   return {
     pm25: aqiToPm25(pm25Aqi),
     pm10: aqiToPm10(pm10Aqi),
-    // 추가 대기 정보 (WAQI는 AQI 값으로 줌, 그대로 표시)
-    o3: get('o3'),       // 오존
-    no2: get('no2'),     // 이산화질소
-    so2: get('so2'),     // 아황산가스
-    co: get('co'),       // 일산화탄소
-    // 날씨 정보
-    temp: get('t'),      // 기온 (°C)
-    humidity: get('h'),  // 습도 (%)
-    pressure: get('p'),  // 기압 (hPa)
-    wind: get('w'),      // 풍속 (m/s)
+    o3: get('o3'),
+    no2: get('no2'),
+    so2: get('so2'),
+    co: get('co'),
+    temp: get('t'),
+    humidity: get('h'),
+    pressure: get('p'),
+    wind: get('w'),
     stationName: (d.city && d.city.name) || '알 수 없음',
     time: (d.time && (d.time.iso || d.time.s)) || new Date().toISOString(),
     stationUid: d.idx
@@ -589,6 +740,35 @@ function createCard(query, label, data, isFavorite) {
   const g25idx = g25 ? g25.idx : 0;
   const g10idx = g10 ? g10.idx : 0;
 
+  // 메인 디스플레이 (등급 + PM 통합)
+  const mainHtml = '<div class="main-display g' + overall.idx + '">' +
+    '<div class="main-top">' +
+      '<div class="grade-emoji">' + overall.emoji + '</div>' +
+      '<div class="grade-info">' +
+        '<div class="grade-label">' + overall.name + '</div>' +
+        '<div class="grade-desc">' + overall.desc + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="main-pollutants">' +
+      '<div class="main-pollutant">' +
+        '<div class="main-pollutant-label">초미세먼지 PM2.5</div>' +
+        '<div class="main-pollutant-row">' +
+          '<span class="main-pollutant-value">' + (data.pm25 != null ? Math.round(data.pm25) : '-') + '</span>' +
+          '<span class="main-pollutant-unit">㎍/㎥</span>' +
+        '</div>' +
+        '<div class="main-pollutant-grade">' + (g25 ? g25.name : '-') + '</div>' +
+      '</div>' +
+      '<div class="main-pollutant">' +
+        '<div class="main-pollutant-label">미세먼지 PM10</div>' +
+        '<div class="main-pollutant-row">' +
+          '<span class="main-pollutant-value">' + (data.pm10 != null ? Math.round(data.pm10) : '-') + '</span>' +
+          '<span class="main-pollutant-unit">㎍/㎥</span>' +
+        '</div>' +
+        '<div class="main-pollutant-grade">' + (g10 ? g10.name : '-') + '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
   // 날씨 영역
   let weatherHtml = '';
   const weatherItems = [];
@@ -608,20 +788,20 @@ function createCard(query, label, data, isFavorite) {
     weatherHtml = '<div class="weather-row">' + weatherItems.join('') + '</div>';
   }
 
-  // 추가 대기 정보 (오존, 이산화질소, 일산화탄소 등)
+  // 추가 대기 정보
   let extraHtml = '';
   const extraItems = [];
   if (data.o3 != null) {
-    extraItems.push('<div class="extra-pollutant"><div class="extra-label">오존 O₃</div><div class="extra-value">' + Math.round(data.o3) + '<span class="extra-unit"> AQI</span></div></div>');
+    extraItems.push('<div class="extra-pollutant"><div class="extra-label">오존 O₃</div><div class="extra-value">' + Math.round(data.o3) + '</div></div>');
   }
   if (data.no2 != null) {
-    extraItems.push('<div class="extra-pollutant"><div class="extra-label">이산화질소 NO₂</div><div class="extra-value">' + Math.round(data.no2) + '<span class="extra-unit"> AQI</span></div></div>');
+    extraItems.push('<div class="extra-pollutant"><div class="extra-label">NO₂</div><div class="extra-value">' + Math.round(data.no2) + '</div></div>');
   }
   if (data.so2 != null) {
-    extraItems.push('<div class="extra-pollutant"><div class="extra-label">아황산가스 SO₂</div><div class="extra-value">' + Math.round(data.so2) + '<span class="extra-unit"> AQI</span></div></div>');
+    extraItems.push('<div class="extra-pollutant"><div class="extra-label">SO₂</div><div class="extra-value">' + Math.round(data.so2) + '</div></div>');
   }
   if (data.co != null) {
-    extraItems.push('<div class="extra-pollutant"><div class="extra-label">일산화탄소 CO</div><div class="extra-value">' + Math.round(data.co) + '<span class="extra-unit"> AQI</span></div></div>');
+    extraItems.push('<div class="extra-pollutant"><div class="extra-label">CO</div><div class="extra-value">' + Math.round(data.co) + '</div></div>');
   }
   if (extraItems.length > 0) {
     extraHtml = '<div class="extra-pollutants">' + extraItems.join('') + '</div>';
@@ -639,26 +819,8 @@ function createCard(query, label, data, isFavorite) {
         '<button class="icon-btn refresh-btn" data-query="' + queryEsc + '" data-label="' + labelEsc + '" title="새로고침">↻</button>' +
       '</div>' +
     '</div>' +
-    '<div class="grade-display g' + overall.idx + '">' +
-      '<div class="grade-emoji">' + overall.emoji + '</div>' +
-      '<div class="grade-info">' +
-        '<div class="grade-label">' + overall.name + '</div>' +
-        '<div class="grade-desc">' + overall.desc + '</div>' +
-      '</div>' +
-    '</div>' +
+    mainHtml +
     weatherHtml +
-    '<div class="pollutants">' +
-      '<div class="pollutant">' +
-        '<div class="pollutant-label">초미세먼지 PM2.5</div>' +
-        '<div class="pollutant-value">' + (data.pm25 != null ? Math.round(data.pm25) : '-') + '<span class="pollutant-unit">㎍/㎥</span></div>' +
-        '<div class="pollutant-grade grade-text-' + g25idx + '">' + (g25 ? g25.name : '-') + '</div>' +
-      '</div>' +
-      '<div class="pollutant">' +
-        '<div class="pollutant-label">미세먼지 PM10</div>' +
-        '<div class="pollutant-value">' + (data.pm10 != null ? Math.round(data.pm10) : '-') + '<span class="pollutant-unit">㎍/㎥</span></div>' +
-        '<div class="pollutant-grade grade-text-' + g10idx + '">' + (g10 ? g10.name : '-') + '</div>' +
-      '</div>' +
-    '</div>' +
     extraHtml +
   '</div>';
 }
@@ -683,14 +845,12 @@ async function renderFavorites() {
     return;
   }
 
-  // 카드가 1개면 스와이프 없이 그냥 렌더
   if (favorites.length === 1) {
     section.innerHTML = '<div class="section-title">⭐ 저장한 지역</div>' +
       '<div id="favoritesList">' +
       '<div class="card"><div class="loading"><span class="spinner"></span>' + escapeHtml(favorites[0].label) + ' 불러오는 중...</div></div>' +
       '</div>';
   } else {
-    // 여러개면 스와이프 컨테이너로
     section.innerHTML = '<div class="section-title">⭐ 저장한 지역</div>' +
       '<div class="swipe-nav">' +
         '<span class="swipe-counter" id="swipeCounter">1 / ' + favorites.length + '</span>' +
@@ -709,7 +869,6 @@ async function renderFavorites() {
       '</div>';
   }
 
-  // 데이터 가져오기 (병렬)
   const results = await Promise.all(favorites.map(async (fav) => {
     try {
       let data;
@@ -759,8 +918,8 @@ async function renderFavorites() {
   attachCardListeners();
 }
 
-// ============ 스와이프 동작 ============
-let swipeState = { idx: 0, total: 0, startX: 0, currentX: 0, dragging: false };
+// ============ 스와이프 ============
+let swipeState = { idx: 0, total: 0 };
 
 function initSwipe() {
   const track = document.getElementById('swipeTrack');
@@ -787,30 +946,23 @@ function initSwipe() {
     update();
   }
 
-  // 점 클릭
   dots.forEach(dot => {
     dot.onclick = () => goTo(parseInt(dot.dataset.idx));
   });
 
-  // 화살표 버튼
   if (prevBtn) prevBtn.onclick = () => goTo(swipeState.idx - 1);
   if (nextBtn) nextBtn.onclick = () => goTo(swipeState.idx + 1);
 
-  // 터치/마우스 드래그
-  let startX = 0;
-  let startY = 0;
-  let deltaX = 0;
-  let deltaY = 0;
+  let startX = 0, startY = 0;
+  let deltaX = 0, deltaY = 0;
   let dragging = false;
-  let lockedDirection = null; // 'horizontal' | 'vertical' | null
+  let lockedDirection = null;
   let trackWidth = track.offsetWidth;
-  const LOCK_THRESHOLD = 8; // 8px 움직이기 전엔 방향 미정
+  const LOCK_THRESHOLD = 8;
 
   function onStart(x, y) {
-    startX = x;
-    startY = y;
-    deltaX = 0;
-    deltaY = 0;
+    startX = x; startY = y;
+    deltaX = 0; deltaY = 0;
     dragging = true;
     lockedDirection = null;
     trackWidth = track.offsetWidth;
@@ -822,19 +974,15 @@ function initSwipe() {
     deltaX = x - startX;
     deltaY = y - startY;
 
-    // 방향 결정 (한 번 결정되면 고정)
     if (lockedDirection === null) {
       const absX = Math.abs(deltaX);
       const absY = Math.abs(deltaY);
-      if (absX < LOCK_THRESHOLD && absY < LOCK_THRESHOLD) {
-        return; // 아직 방향 결정 안 됨
-      }
+      if (absX < LOCK_THRESHOLD && absY < LOCK_THRESHOLD) return;
       if (absX > absY) {
         lockedDirection = 'horizontal';
         track.classList.add('locked-horizontal');
       } else {
         lockedDirection = 'vertical';
-        // 세로 스크롤이면 드래그 종료, 페이지 스크롤 허용
         dragging = false;
         track.classList.remove('dragging');
         track.style.transform = 'translateX(-' + (swipeState.idx * 100) + '%)';
@@ -843,7 +991,6 @@ function initSwipe() {
     }
 
     if (lockedDirection === 'horizontal') {
-      // 세로 스크롤 막기
       if (e && e.cancelable) e.preventDefault();
       const offset = -(swipeState.idx * trackWidth) + deltaX;
       track.style.transform = 'translateX(' + offset + 'px)';
@@ -875,17 +1022,11 @@ function initSwipe() {
     lockedDirection = null;
   }
 
-  // 터치 이벤트 - passive: false로 preventDefault 가능하게
-  track.addEventListener('touchstart', (e) => {
-    onStart(e.touches[0].clientX, e.touches[0].clientY);
-  }, { passive: true });
-  track.addEventListener('touchmove', (e) => {
-    onMove(e.touches[0].clientX, e.touches[0].clientY, e);
-  }, { passive: false });
+  track.addEventListener('touchstart', (e) => onStart(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+  track.addEventListener('touchmove', (e) => onMove(e.touches[0].clientX, e.touches[0].clientY, e), { passive: false });
   track.addEventListener('touchend', onEnd);
   track.addEventListener('touchcancel', onEnd);
 
-  // 마우스 이벤트 (데스크탑 테스트용)
   track.addEventListener('mousedown', (e) => {
     if (e.target.closest('button')) return;
     onStart(e.clientX, e.clientY);
@@ -894,7 +1035,6 @@ function initSwipe() {
   window.addEventListener('mousemove', (e) => { if (dragging) onMove(e.clientX, e.clientY, null); });
   window.addEventListener('mouseup', onEnd);
 
-  // 키보드 좌우 화살표
   document.addEventListener('keydown', (e) => {
     if (favorites.length < 2) return;
     if (e.key === 'ArrowLeft') goTo(swipeState.idx - 1);
@@ -913,7 +1053,7 @@ function showStationPicker(stations, originalQuery) {
 
   resultsDiv.innerHTML = '<div class="section-title">검색 결과</div>' +
     '<div class="card">' +
-    '<div style="font-size:13px;color:#86868b;margin-bottom:8px;">"' + escapeHtml(originalQuery) + '"에 해당하는 정확한 측정소를 못 찾았어요. 가까운 측정소 목록:</div>' +
+    '<div style="font-size:13px;color:var(--md-on-surface-variant);margin-bottom:8px;">"' + escapeHtml(originalQuery) + '"에 해당하는 정확한 측정소를 못 찾았어요. 가까운 측정소 목록:</div>' +
     '<div class="station-list">' + items + '</div>' +
     '</div>';
 
@@ -921,7 +1061,6 @@ function showStationPicker(stations, originalQuery) {
     el.onclick = async () => {
       const station = stations[idx];
       const stName = station.station && station.station.name ? station.station.name : '측정소';
-      // station.uid를 사용하면 정확한 측정소 데이터 받을 수 있음
       const resultsDiv2 = document.getElementById('searchResults');
       resultsDiv2.innerHTML = '<div class="section-title">검색 결과</div><div class="card"><div class="loading"><span class="spinner"></span>' + escapeHtml(stName) + ' 불러오는 중...</div></div>';
       try {
@@ -955,11 +1094,9 @@ async function searchAndDisplay(query, label) {
       finalQuery = 'geo:' + loc.lat + ';' + loc.lon;
       finalLabel = '내 위치';
     } else {
-      // 한글이 포함되어 있으면 지오코딩(좌표 변환) 먼저 시도
       const hasKorean = /[가-힣]/.test(query);
 
       if (hasKorean) {
-        // 한글 → 좌표 변환 (Nominatim)
         try {
           const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=kr&accept-language=ko`;
           const geoRes = await fetch(geoUrl);
@@ -978,8 +1115,7 @@ async function searchAndDisplay(query, label) {
             }
           }
         } catch (geoErr) {
-          // 지오코딩 실패하면 일반 검색으로 폴백
-          console.log('지오코딩 실패, 일반 검색으로 시도:', geoErr);
+          console.log('지오코딩 실패:', geoErr);
         }
       }
 
@@ -988,7 +1124,6 @@ async function searchAndDisplay(query, label) {
         finalQuery = query;
         finalLabel = displayLabel;
       } catch (cityErr) {
-        // 시티 검색 실패 시 측정소 검색으로 폴백
         const stations = await searchStations(query);
         if (stations.length === 0) {
           throw new Error('"' + query + '" 데이터를 찾을 수 없어요');
@@ -1002,7 +1137,7 @@ async function searchAndDisplay(query, label) {
     resultsDiv.innerHTML = '<div class="section-title">검색 결과</div>' + createCard(finalQuery, finalLabel, data, isFav);
     attachCardListeners();
   } catch (e) {
-    resultsDiv.innerHTML = '<div class="section-title">검색 결과</div><div class="card"><div class="error">❌ ' + escapeHtml(e.message) + '<br><span style="font-size:11px;color:#86868b;">동네 이름 + 시/구를 함께 입력해보세요 (예: 야탑동 성남, 부평구 인천)</span></div></div>';
+    resultsDiv.innerHTML = '<div class="section-title">검색 결과</div><div class="card"><div class="error">❌ ' + escapeHtml(e.message) + '<br><span style="font-size:11px;color:var(--md-on-surface-variant);">동네 이름 + 시/구를 함께 입력해보세요</span></div></div>';
   }
 }
 
@@ -1068,7 +1203,6 @@ function attachCardListeners() {
   });
 }
 
-// ============ 이벤트 ============
 document.getElementById('searchBtn').onclick = () => {
   const v = document.getElementById('searchInput').value.trim();
   if (v) searchAndDisplay(v, v);
@@ -1088,7 +1222,6 @@ document.querySelectorAll('.quick-city').forEach(btn => {
   };
 });
 
-// ============ 초기화 ============
 (async function init() {
   renderLegend();
   loadFavorites();
