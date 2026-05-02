@@ -614,6 +614,42 @@ function aqiToPm10(aqi) {
   return null;
 }
 
+// ============ Open-Meteo 날씨 API (보충용) ============
+async function fetchWeather(lat, lon) {
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m&timezone=Asia%2FSeoul&wind_speed_unit=ms`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.current) return null;
+    return {
+      temp: data.current.temperature_2m,
+      humidity: data.current.relative_humidity_2m,
+      pressure: data.current.surface_pressure,
+      wind: data.current.wind_speed_10m
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+// 측정소 데이터에 날씨가 빠져 있으면 좌표로 날씨 보충
+async function ensureWeather(data) {
+  const hasWeather = data.temp != null || data.humidity != null || data.wind != null;
+  if (hasWeather) return data;
+
+  if (data._geo && data._geo.length === 2) {
+    const weather = await fetchWeather(data._geo[0], data._geo[1]);
+    if (weather) {
+      data.temp = weather.temp;
+      data.humidity = weather.humidity;
+      data.pressure = weather.pressure;
+      data.wind = weather.wind;
+    }
+  }
+  return data;
+}
+
 // ============ 배경색 변경 ============
 const bgClasses = ['bg-g0', 'bg-g1', 'bg-g2', 'bg-g3', 'bg-g4', 'bg-g5', 'bg-g6', 'bg-g7'];
 function setBackgroundByGrade(gradeIdx) {
@@ -669,7 +705,8 @@ async function fetchByCity(query) {
   if (data.status !== 'ok') {
     throw new Error('해당 지역 데이터를 찾을 수 없어요');
   }
-  return parseWaqiResponse(data.data);
+  const parsed = parseWaqiResponse(data.data);
+  return await ensureWeather(parsed);
 }
 
 async function fetchByGeo(lat, lon) {
@@ -680,7 +717,10 @@ async function fetchByGeo(lat, lon) {
   if (data.status !== 'ok') {
     throw new Error('근처 측정소를 찾을 수 없어요');
   }
-  return parseWaqiResponse(data.data);
+  const parsed = parseWaqiResponse(data.data);
+  // 측정소 좌표가 없으면 검색에 사용한 좌표를 그대로 사용
+  if (!parsed._geo) parsed._geo = [parseFloat(lat), parseFloat(lon)];
+  return await ensureWeather(parsed);
 }
 
 async function searchStations(query) {
@@ -712,7 +752,8 @@ function parseWaqiResponse(d) {
     wind: get('w'),
     stationName: (d.city && d.city.name) || '알 수 없음',
     time: (d.time && (d.time.iso || d.time.s)) || new Date().toISOString(),
-    stationUid: d.idx
+    stationUid: d.idx,
+    _geo: (d.city && d.city.geo) ? d.city.geo : null
   };
 }
 
@@ -918,6 +959,7 @@ async function renderFavorites() {
         const json = await res.json();
         if (json.status !== 'ok') throw new Error('측정소 오류');
         data = parseWaqiResponse(json.data);
+        data = await ensureWeather(data);
       } else {
         data = await fetchByCity(fav.query);
       }
@@ -1116,11 +1158,16 @@ function showStationPicker(stations, originalQuery) {
         const res = await fetch(url);
         const data = await res.json();
         if (data.status !== 'ok') throw new Error('측정소 데이터 오류');
-        const parsed = parseWaqiResponse(data.data);
+        let parsed = parseWaqiResponse(data.data);
+        parsed = await ensureWeather(parsed);
         const query = '@' + station.uid;
         const isFav = favorites.some(f => f.query === query);
         resultsDiv2.innerHTML = '<div class="section-title">검색 결과</div>' + createCard(query, stName, parsed, isFav);
         attachCardListeners();
+        // 배경색
+        const overall = getOverallGrade(parsed.pm25, parsed.pm10);
+        currentDisplayGrades.search = overall ? overall.idx : null;
+        updateBackground();
       } catch (e) {
         resultsDiv2.innerHTML = '<div class="section-title">검색 결과</div><div class="card"><div class="error">❌ ' + escapeHtml(e.message) + '</div></div>';
       }
@@ -1240,6 +1287,7 @@ function attachCardListeners() {
           const json = await res.json();
           if (json.status !== 'ok') throw new Error('측정소 오류');
           data = parseWaqiResponse(json.data);
+          data = await ensureWeather(data);
         } else {
           data = await fetchByCity(query);
         }
