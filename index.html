@@ -557,16 +557,16 @@
 // ============ WAQI API 토큰 ============
 const TOKEN = 'f313f3dcb3ed88874c5b83e025b447f4a265f221';
 
-// ============ 8단계 기준 ============
+// ============ 8단계 기준 (미세미세 앱 공식 기준) ============
 const GRADES = [
-  { idx: 0, name: '최고좋음', emoji: '😄', desc: '공기가 매우 깨끗해요. 야외활동 마음껏!', pm25: [0, 5],   pm10: [0, 15] },
-  { idx: 1, name: '좋음',     emoji: '🙂', desc: '깨끗한 편이에요. 활동하기 좋아요.',     pm25: [6, 10],  pm10: [16, 30] },
-  { idx: 2, name: '양호',     emoji: '😊', desc: '괜찮은 수준. 평소처럼 지내세요.',       pm25: [11, 15], pm10: [31, 40] },
-  { idx: 3, name: '보통',     emoji: '😐', desc: '보통 수준. 민감군은 살짝 주의.',         pm25: [16, 25], pm10: [41, 50] },
-  { idx: 4, name: '나쁨',     emoji: '😷', desc: '마스크 착용을 권해요.',                 pm25: [26, 50], pm10: [51, 75] },
-  { idx: 5, name: '상당히나쁨', emoji: '😨', desc: '장시간 외출 자제하세요.',             pm25: [51, 75], pm10: [76, 100] },
-  { idx: 6, name: '매우나쁨', emoji: '🤢', desc: '외출 자제, KF94 이상 마스크 필수.',     pm25: [76, 100],pm10: [101, 150] },
-  { idx: 7, name: '최악',     emoji: '☠️', desc: '실외활동 금지. 창문 닫고 공기청정기 가동.', pm25: [101, 9999], pm10: [151, 9999] }
+  { idx: 0, name: '최고좋음', emoji: '😄', desc: '공기가 매우 깨끗해요. 야외활동 마음껏!', pm25: [0, 5],     pm10: [0, 10] },
+  { idx: 1, name: '좋음',     emoji: '🙂', desc: '깨끗한 편이에요. 활동하기 좋아요.',     pm25: [6, 9],     pm10: [11, 22] },
+  { idx: 2, name: '양호',     emoji: '😊', desc: '괜찮은 수준. 평소처럼 지내세요.',       pm25: [10, 12],   pm10: [23, 35] },
+  { idx: 3, name: '보통',     emoji: '😐', desc: '보통 수준. 민감군은 살짝 주의.',         pm25: [13, 15],   pm10: [36, 45] },
+  { idx: 4, name: '나쁨',     emoji: '😷', desc: '마스크 착용을 권해요.',                 pm25: [16, 37],   pm10: [46, 75] },
+  { idx: 5, name: '상당히나쁨', emoji: '😨', desc: '장시간 외출 자제하세요.',             pm25: [38, 50],   pm10: [76, 100] },
+  { idx: 6, name: '매우나쁨', emoji: '🤢', desc: '외출 자제, KF94 이상 마스크 필수.',     pm25: [51, 75],   pm10: [101, 150] },
+  { idx: 7, name: '최악',     emoji: '☠️', desc: '실외활동 금지. 창문 닫고 공기청정기 가동.', pm25: [76, 99999], pm10: [151, 99999] }
 ];
 
 function getGrade(value, type) {
@@ -905,7 +905,7 @@ function createCard(query, label, data, isFavorite) {
 function renderLegend() {
   const list = document.getElementById('legendList');
   list.innerHTML = GRADES.map(g => {
-    const range = g.pm25[1] === 9999 ? (g.pm25[0] + '+') : (g.pm25[0] + '~' + g.pm25[1]);
+    const range = g.pm25[1] >= 9999 ? (g.pm25[0] + '+') : (g.pm25[0] + '~' + g.pm25[1]);
     return '<div class="legend-row">' +
       '<div class="legend-color g' + g.idx + '"></div>' +
       '<span>' + g.emoji + '</span>' +
