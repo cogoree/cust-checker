@@ -135,6 +135,57 @@
   .pollutant-unit { font-size: 11px; color: #86868b; font-weight: 400; margin-left: 2px; }
   .pollutant-grade { font-size: 11px; font-weight: 600; margin-top: 2px; }
 
+  /* 날씨 영역 */
+  .weather-row {
+    display: flex;
+    gap: 12px;
+    padding: 10px 12px;
+    background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .weather-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: #1d1d1f;
+  }
+  .weather-icon { font-size: 16px; }
+  .weather-value { font-weight: 600; }
+  .weather-label { font-size: 11px; color: #86868b; }
+
+  /* 추가 대기 정보 */
+  .extra-pollutants {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .extra-pollutant {
+    background: #f9f9fb;
+    border-radius: 8px;
+    padding: 8px 6px;
+    text-align: center;
+    border: 1px solid #ececf0;
+  }
+  .extra-label {
+    font-size: 10px;
+    color: #86868b;
+    font-weight: 500;
+  }
+  .extra-value {
+    font-size: 14px;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+  .extra-unit { font-size: 9px; color: #86868b; font-weight: 400; }
+  @media (max-width: 380px) {
+    .extra-pollutants { grid-template-columns: repeat(2, 1fr); }
+  }
+
   .loading, .error {
     text-align: center;
     padding: 30px 16px;
@@ -453,11 +504,25 @@ async function searchStations(query) {
 }
 
 function parseWaqiResponse(d) {
-  const pm25Aqi = d.iaqi && d.iaqi.pm25 ? d.iaqi.pm25.v : null;
-  const pm10Aqi = d.iaqi && d.iaqi.pm10 ? d.iaqi.pm10.v : null;
+  const iaqi = d.iaqi || {};
+  const get = (key) => (iaqi[key] && iaqi[key].v != null) ? iaqi[key].v : null;
+
+  const pm25Aqi = get('pm25');
+  const pm10Aqi = get('pm10');
+
   return {
     pm25: aqiToPm25(pm25Aqi),
     pm10: aqiToPm10(pm10Aqi),
+    // 추가 대기 정보 (WAQI는 AQI 값으로 줌, 그대로 표시)
+    o3: get('o3'),       // 오존
+    no2: get('no2'),     // 이산화질소
+    so2: get('so2'),     // 아황산가스
+    co: get('co'),       // 일산화탄소
+    // 날씨 정보
+    temp: get('t'),      // 기온 (°C)
+    humidity: get('h'),  // 습도 (%)
+    pressure: get('p'),  // 기압 (hPa)
+    wind: get('w'),      // 풍속 (m/s)
     stationName: (d.city && d.city.name) || '알 수 없음',
     time: (d.time && (d.time.iso || d.time.s)) || new Date().toISOString(),
     stationUid: d.idx
@@ -524,6 +589,44 @@ function createCard(query, label, data, isFavorite) {
   const g25idx = g25 ? g25.idx : 0;
   const g10idx = g10 ? g10.idx : 0;
 
+  // 날씨 영역
+  let weatherHtml = '';
+  const weatherItems = [];
+  if (data.temp != null) {
+    weatherItems.push('<div class="weather-item"><span class="weather-icon">🌡️</span><span class="weather-value">' + Math.round(data.temp) + '°C</span></div>');
+  }
+  if (data.humidity != null) {
+    weatherItems.push('<div class="weather-item"><span class="weather-icon">💧</span><span class="weather-value">' + Math.round(data.humidity) + '%</span><span class="weather-label">습도</span></div>');
+  }
+  if (data.wind != null) {
+    weatherItems.push('<div class="weather-item"><span class="weather-icon">🌬️</span><span class="weather-value">' + data.wind.toFixed(1) + '</span><span class="weather-label">m/s</span></div>');
+  }
+  if (data.pressure != null) {
+    weatherItems.push('<div class="weather-item"><span class="weather-icon">📊</span><span class="weather-value">' + Math.round(data.pressure) + '</span><span class="weather-label">hPa</span></div>');
+  }
+  if (weatherItems.length > 0) {
+    weatherHtml = '<div class="weather-row">' + weatherItems.join('') + '</div>';
+  }
+
+  // 추가 대기 정보 (오존, 이산화질소, 일산화탄소 등)
+  let extraHtml = '';
+  const extraItems = [];
+  if (data.o3 != null) {
+    extraItems.push('<div class="extra-pollutant"><div class="extra-label">오존 O₃</div><div class="extra-value">' + Math.round(data.o3) + '<span class="extra-unit"> AQI</span></div></div>');
+  }
+  if (data.no2 != null) {
+    extraItems.push('<div class="extra-pollutant"><div class="extra-label">이산화질소 NO₂</div><div class="extra-value">' + Math.round(data.no2) + '<span class="extra-unit"> AQI</span></div></div>');
+  }
+  if (data.so2 != null) {
+    extraItems.push('<div class="extra-pollutant"><div class="extra-label">아황산가스 SO₂</div><div class="extra-value">' + Math.round(data.so2) + '<span class="extra-unit"> AQI</span></div></div>');
+  }
+  if (data.co != null) {
+    extraItems.push('<div class="extra-pollutant"><div class="extra-label">일산화탄소 CO</div><div class="extra-value">' + Math.round(data.co) + '<span class="extra-unit"> AQI</span></div></div>');
+  }
+  if (extraItems.length > 0) {
+    extraHtml = '<div class="extra-pollutants">' + extraItems.join('') + '</div>';
+  }
+
   return '<div class="card" data-query="' + queryEsc + '">' +
     '<div class="card-head">' +
       '<div style="min-width:0;flex:1;">' +
@@ -543,6 +646,7 @@ function createCard(query, label, data, isFavorite) {
         '<div class="grade-desc">' + overall.desc + '</div>' +
       '</div>' +
     '</div>' +
+    weatherHtml +
     '<div class="pollutants">' +
       '<div class="pollutant">' +
         '<div class="pollutant-label">초미세먼지 PM2.5</div>' +
@@ -555,6 +659,7 @@ function createCard(query, label, data, isFavorite) {
         '<div class="pollutant-grade grade-text-' + g10idx + '">' + (g10 ? g10.name : '-') + '</div>' +
       '</div>' +
     '</div>' +
+    extraHtml +
   '</div>';
 }
 
