@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#007aff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="미세먼지">
+<title>미세먼지 체커</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌫️</text></svg>">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    background: #f5f5f7;
+    color: #1d1d1f;
+    min-height: 100vh;
+    padding: 16px;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+  .container { max-width: 720px; margin: 0 auto; }
+  header { text-align: center; padding: 12px 0 20px; }
+  h1 { font-size: 22px; font-weight: 700; }
+  .subtitle { font-size: 13px; color: #86868b; margin-top: 4px; }
+
+  .search-box {
+    background: white;
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    display: flex;
+    gap: 8px;
+  }
+  .search-box input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 15px;
+    padding: 8px 10px;
+    background: #f5f5f7;
+    border-radius: 10px;
+  }
+  .search-box button {
+    border: none;
+    background: #007aff;
+    color: white;
+    padding: 0 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .search-box button:active { opacity: 0.7; }
+
+  .quick-cities {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .quick-cities::-webkit-scrollbar { display: none; }
+  .quick-city {
+    flex-shrink: 0;
+    background: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 18px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #1d1d1f;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .quick-city:active { background: #e8e8ed; }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #86868b;
+    margin: 16px 4px 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .card {
+    background: white;
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    gap: 8px;
+  }
+  .city-name { font-size: 17px; font-weight: 600; }
+  .station-name { font-size: 11px; color: #86868b; margin-top: 2px; }
+  .updated { font-size: 11px; color: #86868b; margin-top: 2px; }
+  .card-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .icon-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 6px;
+    font-size: 18px;
+    color: #86868b;
+    border-radius: 8px;
+    min-width: 32px;
+  }
+  .icon-btn:active { background: #f0f0f3; }
+  .icon-btn.starred { color: #ffb800; }
+
+  .grade-display {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+  }
+  .grade-emoji { font-size: 44px; }
+  .grade-info { flex: 1; }
+  .grade-label { font-size: 22px; font-weight: 700; line-height: 1.1; }
+  .grade-desc { font-size: 12px; margin-top: 4px; opacity: 0.9; }
+
+  .pollutants { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pollutant { background: #f5f5f7; border-radius: 10px; padding: 10px 12px; }
+  .pollutant-label { font-size: 11px; color: #86868b; font-weight: 500; }
+  .pollutant-value { font-size: 18px; font-weight: 700; margin-top: 2px; }
+  .pollutant-unit { font-size: 11px; color: #86868b; font-weight: 400; margin-left: 2px; }
+  .pollutant-grade { font-size: 11px; font-weight: 600; margin-top: 2px; }
+
+  .loading, .error {
+    text-align: center;
+    padding: 30px 16px;
+    color: #86868b;
+    font-size: 14px;
+  }
+  .error { color: #ff3b30; padding: 16px; }
+  .spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e0e0e5;
+    border-top-color: #007aff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .legend {
+    background: white;
+    border-radius: 14px;
+    padding: 16px;
+    margin-top: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .legend-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    padding: 5px 0;
+  }
+  .legend-color { width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0; }
+  .legend-name { font-weight: 600; min-width: 70px; }
+  .legend-range { color: #86868b; font-size: 11px; }
+
+  footer {
+    text-align: center;
+    margin-top: 24px;
+    padding: 16px;
+    font-size: 11px;
+    color: #86868b;
+    line-height: 1.6;
+  }
+  footer a { color: #007aff; text-decoration: none; }
+
+  .g0 { background: #4a90e2; color: white; }
+  .g1 { background: #5cb85c; color: white; }
+  .g2 { background: #8bc34a; color: white; }
+  .g3 { background: #ffc107; color: #5d4500; }
+  .g4 { background: #ff9800; color: white; }
+  .g5 { background: #ff5722; color: white; }
+  .g6 { background: #d32f2f; color: white; }
+  .g7 { background: #4a148c; color: white; }
+
+  .grade-text-0 { color: #4a90e2; }
+  .grade-text-1 { color: #5cb85c; }
+  .grade-text-2 { color: #8bc34a; }
+  .grade-text-3 { color: #f0a500; }
+  .grade-text-4 { color: #ff9800; }
+  .grade-text-5 { color: #ff5722; }
+  .grade-text-6 { color: #d32f2f; }
+  .grade-text-7 { color: #4a148c; }
+
+  .station-list {
+    margin-top: 8px;
+    padding: 8px;
+    background: #f5f5f7;
+    border-radius: 8px;
+    font-size: 12px;
+  }
+  .station-item {
+    padding: 6px 8px;
+    cursor: pointer;
+    border-radius: 6px;
+  }
+  .station-item:hover, .station-item:active { background: #e8e8ed; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🌫️ 미세먼지 체커</h1>
+    <div class="subtitle">광고 없이 깐깐한 WHO 강화 기준으로 보기</div>
+  </header>
+
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="예: 야탑동, 분당구, 서울, 인천" />
+    <button id="searchBtn">검색</button>
+  </div>
+
+  <div class="quick-cities">
+    <button class="quick-city" data-q="here">📍 내 위치</button>
+    <button class="quick-city" data-q="seoul" data-label="서울">서울</button>
+    <button class="quick-city" data-q="incheon" data-label="인천">인천</button>
+    <button class="quick-city" data-q="busan" data-label="부산">부산</button>
+    <button class="quick-city" data-q="daegu" data-label="대구">대구</button>
+    <button class="quick-city" data-q="daejeon" data-label="대전">대전</button>
+    <button class="quick-city" data-q="gwangju" data-label="광주">광주</button>
+    <button class="quick-city" data-q="ulsan" data-label="울산">울산</button>
+    <button class="quick-city" data-q="jeju" data-label="제주">제주</button>
+    <button class="quick-city" data-q="seongnam" data-label="성남">성남</button>
+  </div>
+
+  <div id="favoritesSection"></div>
+  <div id="searchResults"></div>
+
+  <div class="legend">
+    <div class="legend-title">📊 미세미세 8단계 기준 (PM2.5 ㎍/㎥)</div>
+    <div id="legendList"></div>
+  </div>
+
+  <footer>
+    데이터: <a href="https://aqicn.org" target="_blank">World Air Quality Index</a> (한국 에어코리아 측정소 실시간)<br>
+    WHO 2021 강화 권고 + 미세미세 8단계 컨셉 적용<br>
+    개인용 비상업 앱이며 광고 없음
+  </footer>
+</div>
+
+<script>
+// ============ WAQI API 토큰 ============
+const TOKEN = 'f313f3dcb3ed88874c5b83e025b447f4a265f221';
+
+// ============ 8단계 기준 ============
+const GRADES = [
+  { idx: 0, name: '최고좋음', emoji: '😄', desc: '공기가 매우 깨끗해요. 야외활동 마음껏!', pm25: [0, 5],   pm10: [0, 15] },
+  { idx: 1, name: '좋음',     emoji: '🙂', desc: '깨끗한 편이에요. 활동하기 좋아요.',     pm25: [6, 10],  pm10: [16, 30] },
+  { idx: 2, name: '양호',     emoji: '😊', desc: '괜찮은 수준. 평소처럼 지내세요.',       pm25: [11, 15], pm10: [31, 40] },
+  { idx: 3, name: '보통',     emoji: '😐', desc: '보통 수준. 민감군은 살짝 주의.',         pm25: [16, 25], pm10: [41, 50] },
+  { idx: 4, name: '나쁨',     emoji: '😷', desc: '마스크 착용을 권해요.',                 pm25: [26, 50], pm10: [51, 75] },
+  { idx: 5, name: '상당히나쁨', emoji: '😨', desc: '장시간 외출 자제하세요.',             pm25: [51, 75], pm10: [76, 100] },
+  { idx: 6, name: '매우나쁨', emoji: '🤢', desc: '외출 자제, KF94 이상 마스크 필수.',     pm25: [76, 100],pm10: [101, 150] },
+  { idx: 7, name: '최악',     emoji: '☠️', desc: '실외활동 금지. 창문 닫고 공기청정기 가동.', pm25: [101, 9999], pm10: [151, 9999] }
+];
+
+function getGrade(value, type) {
+  if (value === null || value === undefined || isNaN(value)) return null;
+  for (const g of GRADES) {
+    const range = type === 'pm25' ? g.pm25 : g.pm10;
+    if (value >= range[0] && value <= range[1]) return g;
+  }
+  return GRADES[7];
+}
+
+function getOverallGrade(pm25, pm10) {
+  const g25 = getGrade(pm25, 'pm25');
+  const g10 = getGrade(pm10, 'pm10');
+  if (!g25 && !g10) return null;
+  if (!g25) return g10;
+  if (!g10) return g25;
+  return g25.idx >= g10.idx ? g25 : g10;
+}
+
+// ============ AQI → 농도 변환 (US EPA) ============
+function aqiToPm25(aqi) {
+  if (aqi == null || isNaN(aqi)) return null;
+  const bp = [
+    [0, 50, 0, 12], [51, 100, 12.1, 35.4], [101, 150, 35.5, 55.4],
+    [151, 200, 55.5, 150.4], [201, 300, 150.5, 250.4],
+    [301, 400, 250.5, 350.4], [401, 500, 350.5, 500.4]
+  ];
+  for (const [aLo, aHi, cLo, cHi] of bp) {
+    if (aqi >= aLo && aqi <= aHi) return ((aqi - aLo) * (cHi - cLo) / (aHi - aLo)) + cLo;
+  }
+  return null;
+}
+
+function aqiToPm10(aqi) {
+  if (aqi == null || isNaN(aqi)) return null;
+  const bp = [
+    [0, 50, 0, 54], [51, 100, 55, 154], [101, 150, 155, 254],
+    [151, 200, 255, 354], [201, 300, 355, 424],
+    [301, 400, 425, 504], [401, 500, 505, 604]
+  ];
+  for (const [aLo, aHi, cLo, cHi] of bp) {
+    if (aqi >= aLo && aqi <= aHi) return ((aqi - aLo) * (cHi - cLo) / (aHi - aLo)) + cLo;
+  }
+  return null;
+}
+
+// ============ 즐겨찾기 (localStorage) ============
+let favorites = [];
+const STORAGE_KEY = 'dust_checker_favorites';
+
+function loadFavorites() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) favorites = JSON.parse(raw);
+  } catch (e) {
+    favorites = [];
+  }
+}
+
+function saveFavorites() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(favorites));
+  } catch (e) {
+    console.error('저장 실패:', e);
+  }
+}
+
+// ============ WAQI API 호출 ============
+async function fetchByCity(query) {
+  const url = `https://api.waqi.info/feed/${encodeURIComponent(query)}/?token=${TOKEN}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('네트워크 오류 (' + res.status + ')');
+  const data = await res.json();
+  if (data.status !== 'ok') {
+    throw new Error('해당 지역 데이터를 찾을 수 없어요');
+  }
+  return parseWaqiResponse(data.data);
+}
+
+async function fetchByGeo(lat, lon) {
+  const url = `https://api.waqi.info/feed/geo:${lat};${lon}/?token=${TOKEN}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('네트워크 오류 (' + res.status + ')');
+  const data = await res.json();
+  if (data.status !== 'ok') {
+    throw new Error('근처 측정소를 찾을 수 없어요');
+  }
+  return parseWaqiResponse(data.data);
+}
+
+async function searchStations(query) {
+  const url = `https://api.waqi.info/search/?token=${TOKEN}&keyword=${encodeURIComponent(query)}`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const data = await res.json();
+  if (data.status !== 'ok' || !data.data) return [];
+  return data.data;
+}
+
+function parseWaqiResponse(d) {
+  const pm25Aqi = d.iaqi && d.iaqi.pm25 ? d.iaqi.pm25.v : null;
+  const pm10Aqi = d.iaqi && d.iaqi.pm10 ? d.iaqi.pm10.v : null;
+  return {
+    pm25: aqiToPm25(pm25Aqi),
+    pm10: aqiToPm10(pm10Aqi),
+    stationName: (d.city && d.city.name) || '알 수 없음',
+    time: (d.time && (d.time.iso || d.time.s)) || new Date().toISOString(),
+    stationUid: d.idx
+  };
+}
+
+function getCurrentLocation() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('이 브라우저는 위치 정보를 지원하지 않아요'));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+      err => reject(new Error('위치 권한이 필요해요')),
+      { timeout: 10000 }
+    );
+  });
+}
+
+// ============ 렌더링 ============
+function formatTime(timeStr) {
+  if (!timeStr) return '';
+  const d = new Date(timeStr);
+  if (isNaN(d.getTime())) return timeStr;
+  const h = d.getHours();
+  const m = String(d.getMinutes()).padStart(2, '0');
+  const ampm = h < 12 ? '오전' : '오후';
+  const h12 = h % 12 || 12;
+  return ampm + ' ' + h12 + ':' + m + ' 기준';
+}
+
+function shortStation(name) {
+  if (!name) return '';
+  const parts = name.split(',').map(s => s.trim());
+  if (parts.length > 2) return parts.slice(0, 2).join(', ');
+  return name;
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function createCard(query, label, data, isFavorite) {
+  const overall = getOverallGrade(data.pm25, data.pm10);
+  const queryEsc = escapeHtml(query);
+  const labelEsc = escapeHtml(label);
+
+  if (!overall) {
+    return '<div class="card">' +
+      '<div class="card-head">' +
+        '<div><div class="city-name">' + labelEsc + '</div></div>' +
+        '<div class="card-actions">' +
+          '<button class="icon-btn star-btn ' + (isFavorite ? 'starred' : '') + '" data-query="' + queryEsc + '" data-label="' + labelEsc + '">' + (isFavorite ? '★' : '☆') + '</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="error">측정 데이터가 없어요</div>' +
+    '</div>';
+  }
+
+  const g25 = getGrade(data.pm25, 'pm25');
+  const g10 = getGrade(data.pm10, 'pm10');
+  const g25idx = g25 ? g25.idx : 0;
+  const g10idx = g10 ? g10.idx : 0;
+
+  return '<div class="card" data-query="' + queryEsc + '">' +
+    '<div class="card-head">' +
+      '<div style="min-width:0;flex:1;">' +
+        '<div class="city-name">' + labelEsc + '</div>' +
+        '<div class="station-name">📍 ' + escapeHtml(shortStation(data.stationName)) + '</div>' +
+        '<div class="updated">' + escapeHtml(formatTime(data.time)) + '</div>' +
+      '</div>' +
+      '<div class="card-actions">' +
+        '<button class="icon-btn star-btn ' + (isFavorite ? 'starred' : '') + '" data-query="' + queryEsc + '" data-label="' + labelEsc + '" title="즐겨찾기">' + (isFavorite ? '★' : '☆') + '</button>' +
+        '<button class="icon-btn refresh-btn" data-query="' + queryEsc + '" data-label="' + labelEsc + '" title="새로고침">↻</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="grade-display g' + overall.idx + '">' +
+      '<div class="grade-emoji">' + overall.emoji + '</div>' +
+      '<div class="grade-info">' +
+        '<div class="grade-label">' + overall.name + '</div>' +
+        '<div class="grade-desc">' + overall.desc + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="pollutants">' +
+      '<div class="pollutant">' +
+        '<div class="pollutant-label">초미세먼지 PM2.5</div>' +
+        '<div class="pollutant-value">' + (data.pm25 != null ? Math.round(data.pm25) : '-') + '<span class="pollutant-unit">㎍/㎥</span></div>' +
+        '<div class="pollutant-grade grade-text-' + g25idx + '">' + (g25 ? g25.name : '-') + '</div>' +
+      '</div>' +
+      '<div class="pollutant">' +
+        '<div class="pollutant-label">미세먼지 PM10</div>' +
+        '<div class="pollutant-value">' + (data.pm10 != null ? Math.round(data.pm10) : '-') + '<span class="pollutant-unit">㎍/㎥</span></div>' +
+        '<div class="pollutant-grade grade-text-' + g10idx + '">' + (g10 ? g10.name : '-') + '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderLegend() {
+  const list = document.getElementById('legendList');
+  list.innerHTML = GRADES.map(g => {
+    const range = g.pm25[1] === 9999 ? (g.pm25[0] + '+') : (g.pm25[0] + '~' + g.pm25[1]);
+    return '<div class="legend-row">' +
+      '<div class="legend-color g' + g.idx + '"></div>' +
+      '<span>' + g.emoji + '</span>' +
+      '<span class="legend-name">' + g.name + '</span>' +
+      '<span class="legend-range">PM2.5 ' + range + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+async function renderFavorites() {
+  const section = document.getElementById('favoritesSection');
+  if (favorites.length === 0) {
+    section.innerHTML = '';
+    return;
+  }
+  section.innerHTML = '<div class="section-title">⭐ 저장한 지역</div><div id="favoritesList">' +
+    favorites.map(f => '<div class="card"><div class="loading"><span class="spinner"></span>' + escapeHtml(f.label) + ' 불러오는 중...</div></div>').join('') +
+    '</div>';
+
+  const cards = await Promise.all(favorites.map(async (fav) => {
+    try {
+      let data;
+      if (fav.query.startsWith('geo:')) {
+        const [lat, lon] = fav.query.slice(4).split(';');
+        data = await fetchByGeo(lat, lon);
+      } else {
+        data = await fetchByCity(fav.query);
+      }
+      return createCard(fav.query, fav.label, data, true);
+    } catch (e) {
+      return '<div class="card">' +
+        '<div class="card-head">' +
+          '<div><div class="city-name">' + escapeHtml(fav.label) + '</div></div>' +
+          '<div class="card-actions">' +
+            '<button class="icon-btn star-btn starred" data-query="' + escapeHtml(fav.query) + '" data-label="' + escapeHtml(fav.label) + '">★</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="error">불러오기 실패: ' + escapeHtml(e.message) + '</div>' +
+      '</div>';
+    }
+  }));
+
+  document.getElementById('favoritesList').innerHTML = cards.join('');
+  attachCardListeners();
+}
+
+function showStationPicker(stations, originalQuery) {
+  const resultsDiv = document.getElementById('searchResults');
+  const items = stations.slice(0, 10).map((s, i) => {
+    const stName = s.station && s.station.name ? s.station.name : '측정소';
+    return '<div class="station-item" data-idx="' + i + '">📍 ' + escapeHtml(stName) + '</div>';
+  }).join('');
+
+  resultsDiv.innerHTML = '<div class="section-title">검색 결과</div>' +
+    '<div class="card">' +
+    '<div style="font-size:13px;color:#86868b;margin-bottom:8px;">"' + escapeHtml(originalQuery) + '"에 해당하는 정확한 측정소를 못 찾았어요. 가까운 측정소 목록:</div>' +
+    '<div class="station-list">' + items + '</div>' +
+    '</div>';
+
+  resultsDiv.querySelectorAll('.station-item').forEach((el, idx) => {
+    el.onclick = async () => {
+      const station = stations[idx];
+      const stName = station.station && station.station.name ? station.station.name : '측정소';
+      // station.uid를 사용하면 정확한 측정소 데이터 받을 수 있음
+      const resultsDiv2 = document.getElementById('searchResults');
+      resultsDiv2.innerHTML = '<div class="section-title">검색 결과</div><div class="card"><div class="loading"><span class="spinner"></span>' + escapeHtml(stName) + ' 불러오는 중...</div></div>';
+      try {
+        const url = `https://api.waqi.info/feed/@${station.uid}/?token=${TOKEN}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.status !== 'ok') throw new Error('측정소 데이터 오류');
+        const parsed = parseWaqiResponse(data.data);
+        const query = '@' + station.uid;
+        const isFav = favorites.some(f => f.query === query);
+        resultsDiv2.innerHTML = '<div class="section-title">검색 결과</div>' + createCard(query, stName, parsed, isFav);
+        attachCardListeners();
+      } catch (e) {
+        resultsDiv2.innerHTML = '<div class="section-title">검색 결과</div><div class="card"><div class="error">❌ ' + escapeHtml(e.message) + '</div></div>';
+      }
+    };
+  });
+}
+
+async function searchAndDisplay(query, label) {
+  const resultsDiv = document.getElementById('searchResults');
+  const displayLabel = label || query;
+  resultsDiv.innerHTML = '<div class="section-title">검색 결과</div><div class="card"><div class="loading"><span class="spinner"></span>' + escapeHtml(displayLabel) + ' 불러오는 중...</div></div>';
+
+  try {
+    let data, finalQuery, finalLabel;
+
+    if (query === 'here') {
+      const loc = await getCurrentLocation();
+      data = await fetchByGeo(loc.lat, loc.lon);
+      finalQuery = 'geo:' + loc.lat + ';' + loc.lon;
+      finalLabel = '내 위치';
+    } else {
+      try {
+        data = await fetchByCity(query);
+        finalQuery = query;
+        finalLabel = displayLabel;
+      } catch (cityErr) {
+        // 시티 검색 실패 시 측정소 검색으로 폴백
+        const stations = await searchStations(query);
+        if (stations.length === 0) {
+          throw new Error('"' + query + '" 데이터를 찾을 수 없어요');
+        }
+        showStationPicker(stations, query);
+        return;
+      }
+    }
+
+    const isFav = favorites.some(f => f.query === finalQuery);
+    resultsDiv.innerHTML = '<div class="section-title">검색 결과</div>' + createCard(finalQuery, finalLabel, data, isFav);
+    attachCardListeners();
+  } catch (e) {
+    resultsDiv.innerHTML = '<div class="section-title">검색 결과</div><div class="card"><div class="error">❌ ' + escapeHtml(e.message) + '<br><span style="font-size:11px;color:#86868b;">한국 지역은 한글이나 영문(seoul, incheon 등)으로 입력해보세요</span></div></div>';
+  }
+}
+
+function attachCardListeners() {
+  document.querySelectorAll('.star-btn').forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const query = btn.dataset.query;
+      const label = btn.dataset.label;
+      const idx = favorites.findIndex(f => f.query === query);
+      if (idx >= 0) {
+        favorites.splice(idx, 1);
+      } else {
+        favorites.push({ query: query, label: label });
+      }
+      saveFavorites();
+      await renderFavorites();
+      document.querySelectorAll('#searchResults .star-btn').forEach(b => {
+        if (b.dataset.query === query) {
+          const nowFav = favorites.some(f => f.query === query);
+          b.classList.toggle('starred', nowFav);
+          b.textContent = nowFav ? '★' : '☆';
+        }
+      });
+    };
+  });
+
+  document.querySelectorAll('.refresh-btn').forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const query = btn.dataset.query;
+      const label = btn.dataset.label;
+      const card = btn.closest('.card');
+      const originalHtml = card.innerHTML;
+      card.innerHTML = '<div class="loading"><span class="spinner"></span>새로고침 중...</div>';
+      try {
+        let data;
+        if (query.startsWith('geo:')) {
+          const [lat, lon] = query.slice(4).split(';');
+          data = await fetchByGeo(lat, lon);
+        } else if (query.startsWith('@')) {
+          const uid = query.slice(1);
+          const url = `https://api.waqi.info/feed/@${uid}/?token=${TOKEN}`;
+          const res = await fetch(url);
+          const json = await res.json();
+          if (json.status !== 'ok') throw new Error('측정소 오류');
+          data = parseWaqiResponse(json.data);
+        } else {
+          data = await fetchByCity(query);
+        }
+        const isFav = favorites.some(f => f.query === query);
+        const newHtml = createCard(query, label, data, isFav);
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = newHtml;
+        card.replaceWith(wrapper.firstElementChild);
+        attachCardListeners();
+      } catch (err) {
+        card.innerHTML = originalHtml;
+        alert('새로고침 실패: ' + err.message);
+        attachCardListeners();
+      }
+    };
+  });
+}
+
+// ============ 이벤트 ============
+document.getElementById('searchBtn').onclick = () => {
+  const v = document.getElementById('searchInput').value.trim();
+  if (v) searchAndDisplay(v, v);
+};
+document.getElementById('searchInput').onkeydown = (e) => {
+  if (e.key === 'Enter') {
+    const v = e.target.value.trim();
+    if (v) searchAndDisplay(v, v);
+  }
+};
+document.querySelectorAll('.quick-city').forEach(btn => {
+  btn.onclick = () => {
+    const q = btn.dataset.q;
+    const label = btn.dataset.label || (q === 'here' ? '내 위치' : q);
+    if (q !== 'here') document.getElementById('searchInput').value = label;
+    searchAndDisplay(q, label);
+  };
+});
+
+// ============ 초기화 ============
+(async function init() {
+  renderLegend();
+  loadFavorites();
+  if (favorites.length > 0) {
+    await renderFavorites();
+  } else {
+    searchAndDisplay('incheon', '인천');
+  }
+})();
+</script>
+</body>
+</html>
