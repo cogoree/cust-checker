@@ -389,7 +389,23 @@
     flex-shrink: 0;
   }
   .legend-name { font-weight: 500; min-width: 70px; }
-  .legend-range { color: var(--md-on-surface-variant); font-size: 11px; }
+  .legend-ranges {
+    display: flex;
+    gap: 14px;
+    font-size: 11px;
+    color: var(--md-on-surface-variant);
+    flex: 1;
+  }
+  .legend-range-item {
+    display: flex;
+    gap: 4px;
+    align-items: baseline;
+  }
+  .legend-range-tag {
+    font-weight: 500;
+    color: var(--md-on-surface);
+    font-size: 10px;
+  }
 
   footer {
     text-align: center;
@@ -542,7 +558,7 @@
   <div id="searchResults"></div>
 
   <div class="legend">
-    <div class="legend-title">📊 미세미세 8단계 기준 (PM2.5 ㎍/㎥)</div>
+    <div class="legend-title">📊 미세미세 8단계 기준 (㎍/㎥)</div>
     <div id="legendList"></div>
   </div>
 
@@ -905,12 +921,16 @@ function createCard(query, label, data, isFavorite) {
 function renderLegend() {
   const list = document.getElementById('legendList');
   list.innerHTML = GRADES.map(g => {
-    const range = g.pm25[1] >= 9999 ? (g.pm25[0] + '+') : (g.pm25[0] + '~' + g.pm25[1]);
+    const pm25Range = g.pm25[1] >= 9999 ? (g.pm25[0] + '+') : (g.pm25[0] + '~' + g.pm25[1]);
+    const pm10Range = g.pm10[1] >= 9999 ? (g.pm10[0] + '+') : (g.pm10[0] + '~' + g.pm10[1]);
     return '<div class="legend-row">' +
       '<div class="legend-color g' + g.idx + '"></div>' +
       '<span>' + g.emoji + '</span>' +
       '<span class="legend-name">' + g.name + '</span>' +
-      '<span class="legend-range">PM2.5 ' + range + '</span>' +
+      '<div class="legend-ranges">' +
+        '<div class="legend-range-item"><span class="legend-range-tag">PM2.5</span><span>' + pm25Range + '</span></div>' +
+        '<div class="legend-range-item"><span class="legend-range-tag">PM10</span><span>' + pm10Range + '</span></div>' +
+      '</div>' +
     '</div>';
   }).join('');
 }
