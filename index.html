@@ -179,6 +179,7 @@
     position: relative;
     overflow: hidden;
     border-radius: 16px;
+    touch-action: pan-y;
   }
   .swipe-track {
     display: flex;
@@ -187,6 +188,9 @@
   }
   .swipe-track.dragging {
     transition: none;
+  }
+  .swipe-track.locked-horizontal {
+    touch-action: none;
   }
   .swipe-slide {
     flex: 0 0 100%;
@@ -689,29 +693,72 @@ function initSwipe() {
 
   // 터치/마우스 드래그
   let startX = 0;
+  let startY = 0;
   let deltaX = 0;
+  let deltaY = 0;
   let dragging = false;
+  let lockedDirection = null; // 'horizontal' | 'vertical' | null
   let trackWidth = track.offsetWidth;
+  const LOCK_THRESHOLD = 8; // 8px 움직이기 전엔 방향 미정
 
-  function onStart(x) {
+  function onStart(x, y) {
     startX = x;
+    startY = y;
     deltaX = 0;
+    deltaY = 0;
     dragging = true;
+    lockedDirection = null;
     trackWidth = track.offsetWidth;
     track.classList.add('dragging');
   }
 
-  function onMove(x) {
+  function onMove(x, y, e) {
     if (!dragging) return;
     deltaX = x - startX;
-    const offset = -(swipeState.idx * trackWidth) + deltaX;
-    track.style.transform = 'translateX(' + offset + 'px)';
+    deltaY = y - startY;
+
+    // 방향 결정 (한 번 결정되면 고정)
+    if (lockedDirection === null) {
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+      if (absX < LOCK_THRESHOLD && absY < LOCK_THRESHOLD) {
+        return; // 아직 방향 결정 안 됨
+      }
+      if (absX > absY) {
+        lockedDirection = 'horizontal';
+        track.classList.add('locked-horizontal');
+      } else {
+        lockedDirection = 'vertical';
+        // 세로 스크롤이면 드래그 종료, 페이지 스크롤 허용
+        dragging = false;
+        track.classList.remove('dragging');
+        track.style.transform = 'translateX(-' + (swipeState.idx * 100) + '%)';
+        return;
+      }
+    }
+
+    if (lockedDirection === 'horizontal') {
+      // 세로 스크롤 막기
+      if (e && e.cancelable) e.preventDefault();
+      const offset = -(swipeState.idx * trackWidth) + deltaX;
+      track.style.transform = 'translateX(' + offset + 'px)';
+    }
   }
 
   function onEnd() {
-    if (!dragging) return;
+    if (!dragging) {
+      track.classList.remove('locked-horizontal');
+      return;
+    }
     dragging = false;
     track.classList.remove('dragging');
+    track.classList.remove('locked-horizontal');
+
+    if (lockedDirection !== 'horizontal') {
+      lockedDirection = null;
+      return;
+    }
+
     const threshold = trackWidth * 0.2;
     if (deltaX > threshold && swipeState.idx > 0) {
       goTo(swipeState.idx - 1);
@@ -720,22 +767,26 @@ function initSwipe() {
     } else {
       update();
     }
+    lockedDirection = null;
   }
 
-  // 터치 이벤트
-  track.addEventListener('touchstart', (e) => onStart(e.touches[0].clientX), { passive: true });
-  track.addEventListener('touchmove', (e) => onMove(e.touches[0].clientX), { passive: true });
+  // 터치 이벤트 - passive: false로 preventDefault 가능하게
+  track.addEventListener('touchstart', (e) => {
+    onStart(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  track.addEventListener('touchmove', (e) => {
+    onMove(e.touches[0].clientX, e.touches[0].clientY, e);
+  }, { passive: false });
   track.addEventListener('touchend', onEnd);
   track.addEventListener('touchcancel', onEnd);
 
   // 마우스 이벤트 (데스크탑 테스트용)
   track.addEventListener('mousedown', (e) => {
-    // 버튼 클릭은 드래그 시작 안 함
     if (e.target.closest('button')) return;
-    onStart(e.clientX);
+    onStart(e.clientX, e.clientY);
     e.preventDefault();
   });
-  window.addEventListener('mousemove', (e) => { if (dragging) onMove(e.clientX); });
+  window.addEventListener('mousemove', (e) => { if (dragging) onMove(e.clientX, e.clientY, null); });
   window.addEventListener('mouseup', onEnd);
 
   // 키보드 좌우 화살표
