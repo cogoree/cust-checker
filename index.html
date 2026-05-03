@@ -1311,26 +1311,29 @@ function attachCardListeners() {
         } else {
           data = await fetchByCity(query);
         }
+
+        // 교체 전에 어디 속해 있는지 미리 확인
+        const inSearchResults = !!card.closest('#searchResults');
+        const parentSlide = card.closest('.swipe-slide');
+        const slideIndex = parentSlide
+          ? Array.from(document.querySelectorAll('.swipe-slide')).indexOf(parentSlide)
+          : -1;
+
         const isFav = favorites.some(f => f.query === query);
         const newHtml = createCard(query, label, data, isFav);
         const wrapper = document.createElement('div');
         wrapper.innerHTML = newHtml;
-        card.replaceWith(wrapper.firstElementChild);
+        const newCard = wrapper.firstElementChild;
+        card.replaceWith(newCard);
         attachCardListeners();
 
         // 새로고침 후 배경색 업데이트
         const overall = getOverallGrade(data.pm25, data.pm10);
         const newGrade = overall ? overall.idx : null;
-        if (card.closest('#searchResults')) {
+        if (inSearchResults) {
           currentDisplayGrades.search = newGrade;
-        } else {
-          // 즐겨찾기 카드 업데이트
-          const slides = document.querySelectorAll('.swipe-slide');
-          slides.forEach((slide, i) => {
-            if (slide.contains(wrapper.firstElementChild) || slide === wrapper.firstElementChild.parentElement) {
-              currentDisplayGrades.favorites[i] = newGrade;
-            }
-          });
+        } else if (slideIndex >= 0) {
+          currentDisplayGrades.favorites[slideIndex] = newGrade;
         }
         updateBackground();
       } catch (err) {
