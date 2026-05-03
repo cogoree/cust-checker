@@ -597,6 +597,7 @@ function getGrade(value, type) {
 function getOverallGrade(pm25, pm10) {
   const g25 = getGrade(pm25, 'pm25');
   const g10 = getGrade(pm10, 'pm10');
+  console.log('[등급계산] PM2.5:', pm25, '→', g25 ? g25.name : 'null', '| PM10:', pm10, '→', g10 ? g10.name : 'null');
   if (!g25 && !g10) return null;
   if (!g25) return g10;
   if (!g10) return g25;
