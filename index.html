@@ -341,6 +341,96 @@
     letter-spacing: -0.3px;
   }
 
+  /* 예보 영역 */
+  .forecast-section {
+    margin-top: 12px;
+  }
+  .forecast-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 10px;
+    background: var(--md-surface-variant);
+    padding: 4px;
+    border-radius: 12px;
+  }
+  .forecast-tab {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--md-on-surface-variant);
+    font-family: inherit;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+  }
+  .forecast-tab.active {
+    background: var(--md-surface);
+    color: var(--md-primary);
+    box-shadow: var(--md-elevation-1);
+  }
+  .forecast-scroll {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    scroll-snap-type: x mandatory;
+  }
+  .forecast-scroll::-webkit-scrollbar { height: 4px; }
+  .forecast-scroll::-webkit-scrollbar-track { background: transparent; }
+  .forecast-scroll::-webkit-scrollbar-thumb { background: var(--md-outline); border-radius: 2px; }
+  .forecast-item {
+    flex-shrink: 0;
+    background: var(--md-surface-variant);
+    border-radius: 12px;
+    padding: 10px 6px;
+    text-align: center;
+    min-width: 60px;
+    scroll-snap-align: start;
+    border: 1px solid transparent;
+  }
+  .forecast-item.now {
+    border-color: var(--md-primary);
+    background: rgba(25, 118, 210, 0.08);
+  }
+  .forecast-time {
+    font-size: 10px;
+    color: var(--md-on-surface-variant);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .forecast-emoji {
+    font-size: 20px;
+    margin: 6px 0 4px;
+  }
+  .forecast-value {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .forecast-unit {
+    font-size: 9px;
+    color: var(--md-on-surface-variant);
+    font-weight: 400;
+  }
+  .forecast-grade {
+    font-size: 9px;
+    font-weight: 500;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .forecast-loading {
+    text-align: center;
+    padding: 20px;
+    font-size: 12px;
+    color: var(--md-on-surface-variant);
+  }
+
   .loading, .error {
     text-align: center;
     padding: 32px 16px;
@@ -668,6 +758,59 @@ async function ensureWeather(data) {
   return data;
 }
 
+// ============ Open-Meteo 미세먼지 예보 API ============
+async function fetchAirForecast(lat, lon) {
+  try {
+    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm10,pm2_5&timezone=Asia%2FSeoul&forecast_days=7`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.hourly) return null;
+
+    const times = data.hourly.time || [];
+    const pm25s = data.hourly.pm2_5 || [];
+    const pm10s = data.hourly.pm10 || [];
+
+    // 시간별 데이터 (현재 시각 ±기준)
+    const hourly = times.map((t, i) => ({
+      time: t,
+      pm25: pm25s[i],
+      pm10: pm10s[i]
+    }));
+
+    // 일별로 그룹핑 (각 날짜의 평균)
+    const dailyMap = {};
+    hourly.forEach(h => {
+      const date = h.time.slice(0, 10); // YYYY-MM-DD
+      if (!dailyMap[date]) {
+        dailyMap[date] = { pm25Sum: 0, pm10Sum: 0, pm25Count: 0, pm10Count: 0 };
+      }
+      if (h.pm25 != null) {
+        dailyMap[date].pm25Sum += h.pm25;
+        dailyMap[date].pm25Count++;
+      }
+      if (h.pm10 != null) {
+        dailyMap[date].pm10Sum += h.pm10;
+        dailyMap[date].pm10Count++;
+      }
+    });
+
+    const daily = Object.keys(dailyMap).sort().map(date => {
+      const m = dailyMap[date];
+      return {
+        date: date,
+        pm25: m.pm25Count > 0 ? m.pm25Sum / m.pm25Count : null,
+        pm10: m.pm10Count > 0 ? m.pm10Sum / m.pm10Count : null
+      };
+    });
+
+    return { hourly, daily };
+  } catch (e) {
+    console.error('예보 가져오기 실패:', e);
+    return null;
+  }
+}
+
 // ============ 배경색 변경 ============
 const bgClasses = ['bg-g0', 'bg-g1', 'bg-g2', 'bg-g3', 'bg-g4', 'bg-g5', 'bg-g6', 'bg-g7'];
 function setBackgroundByGrade(gradeIdx) {
@@ -902,6 +1045,22 @@ function createCard(query, label, data, isFavorite) {
     extraHtml = '<div class="extra-pollutants">' + extraItems.join('') + '</div>';
   }
 
+  // 예보 영역 (좌표 있을 때만, 비동기로 채워짐)
+  let forecastHtml = '';
+  if (data._geo && data._geo.length === 2) {
+    const fcId = 'fc_' + Math.random().toString(36).slice(2, 9);
+    forecastHtml =
+      '<div class="forecast-section" data-fc-id="' + fcId + '" data-lat="' + data._geo[0] + '" data-lon="' + data._geo[1] + '">' +
+        '<div class="forecast-tabs">' +
+          '<button class="forecast-tab active" data-mode="hourly">시간별 (24시간)</button>' +
+          '<button class="forecast-tab" data-mode="daily">일별 (일주일)</button>' +
+        '</div>' +
+        '<div class="forecast-scroll" id="' + fcId + '">' +
+          '<div class="forecast-loading"><span class="spinner"></span>예보 불러오는 중...</div>' +
+        '</div>' +
+      '</div>';
+  }
+
   return '<div class="card" data-query="' + queryEsc + '">' +
     '<div class="card-head">' +
       '<div style="min-width:0;flex:1;">' +
@@ -917,6 +1076,7 @@ function createCard(query, label, data, isFavorite) {
     mainHtml +
     weatherHtml +
     extraHtml +
+    forecastHtml +
   '</div>';
 }
 
@@ -1265,7 +1425,132 @@ async function searchAndDisplay(query, label) {
   }
 }
 
+// ============ 예보 렌더링 ============
+const forecastCache = {}; // 같은 좌표 중복 호출 방지
+
+async function loadForecastFor(section, lat, lon) {
+  const fcId = section.querySelector('.forecast-scroll').id;
+  const cacheKey = lat.toFixed(3) + ',' + lon.toFixed(3);
+
+  let forecast;
+  if (forecastCache[cacheKey]) {
+    forecast = forecastCache[cacheKey];
+  } else {
+    forecast = await fetchAirForecast(lat, lon);
+    if (forecast) forecastCache[cacheKey] = forecast;
+  }
+
+  const scrollDiv = section.querySelector('.forecast-scroll');
+  if (!forecast) {
+    scrollDiv.innerHTML = '<div class="forecast-loading">예보를 불러올 수 없어요</div>';
+    return;
+  }
+
+  // 기본: 시간별 모드로 시작
+  renderForecast(section, forecast, 'hourly');
+
+  // 탭 클릭 핸들러
+  section.querySelectorAll('.forecast-tab').forEach(tab => {
+    tab.onclick = () => {
+      section.querySelectorAll('.forecast-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      renderForecast(section, forecast, tab.dataset.mode);
+    };
+  });
+}
+
+function renderForecast(section, forecast, mode) {
+  const scrollDiv = section.querySelector('.forecast-scroll');
+  const now = new Date();
+  const nowHour = now.getHours();
+  const nowDate = now.toISOString().slice(0, 10);
+
+  if (mode === 'hourly') {
+    // 현재 시각부터 다음 24시간
+    const items = forecast.hourly.filter(h => {
+      const hTime = new Date(h.time);
+      return hTime >= now || (hTime.getDate() === now.getDate() && hTime.getHours() === nowHour);
+    }).slice(0, 24);
+
+    if (items.length === 0) {
+      scrollDiv.innerHTML = '<div class="forecast-loading">데이터 없음</div>';
+      return;
+    }
+
+    scrollDiv.innerHTML = items.map((h, idx) => {
+      const t = new Date(h.time);
+      const hour = t.getHours();
+      const isNow = idx === 0;
+      const grade = getOverallGrade(h.pm25, h.pm10);
+      const emoji = grade ? grade.emoji : '❓';
+      const gradeName = grade ? grade.name : '-';
+      const pm25Display = h.pm25 != null ? Math.round(h.pm25) : '-';
+
+      let timeLabel;
+      if (isNow) {
+        timeLabel = '지금';
+      } else if (hour === 0) {
+        timeLabel = (t.getMonth() + 1) + '/' + t.getDate();
+      } else {
+        timeLabel = hour + '시';
+      }
+
+      return '<div class="forecast-item' + (isNow ? ' now' : '') + '">' +
+        '<div class="forecast-time">' + timeLabel + '</div>' +
+        '<div class="forecast-emoji">' + emoji + '</div>' +
+        '<div class="forecast-value">' + pm25Display + '<span class="forecast-unit"> ㎍</span></div>' +
+        '<div class="forecast-grade grade-text-' + (grade ? grade.idx : 0) + '">' + gradeName + '</div>' +
+      '</div>';
+    }).join('');
+  } else {
+    // 일별 (오늘 + 일주일)
+    const items = forecast.daily.filter(d => d.date >= nowDate).slice(0, 7);
+
+    if (items.length === 0) {
+      scrollDiv.innerHTML = '<div class="forecast-loading">데이터 없음</div>';
+      return;
+    }
+
+    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+
+    scrollDiv.innerHTML = items.map((d, idx) => {
+      const date = new Date(d.date + 'T00:00:00');
+      const isToday = d.date === nowDate;
+      const grade = getOverallGrade(d.pm25, d.pm10);
+      const emoji = grade ? grade.emoji : '❓';
+      const gradeName = grade ? grade.name : '-';
+      const pm25Display = d.pm25 != null ? Math.round(d.pm25) : '-';
+
+      let label;
+      if (isToday) {
+        label = '오늘';
+      } else if (idx === 1) {
+        label = '내일';
+      } else {
+        label = (date.getMonth() + 1) + '/' + date.getDate() + ' (' + dayNames[date.getDay()] + ')';
+      }
+
+      return '<div class="forecast-item' + (isToday ? ' now' : '') + '">' +
+        '<div class="forecast-time">' + label + '</div>' +
+        '<div class="forecast-emoji">' + emoji + '</div>' +
+        '<div class="forecast-value">' + pm25Display + '<span class="forecast-unit"> ㎍</span></div>' +
+        '<div class="forecast-grade grade-text-' + (grade ? grade.idx : 0) + '">' + gradeName + '</div>' +
+      '</div>';
+    }).join('');
+  }
+}
+
 function attachCardListeners() {
+  // 예보 섹션 자동 로드
+  document.querySelectorAll('.forecast-section').forEach(section => {
+    if (section.dataset.loaded === 'true') return;
+    const lat = parseFloat(section.dataset.lat);
+    const lon = parseFloat(section.dataset.lon);
+    if (isNaN(lat) || isNaN(lon)) return;
+    section.dataset.loaded = 'true';
+    loadForecastFor(section, lat, lon);
+  });
+
   document.querySelectorAll('.star-btn').forEach(btn => {
     btn.onclick = async (e) => {
       e.stopPropagation();
