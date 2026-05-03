@@ -345,32 +345,13 @@
   .forecast-section {
     margin-top: 12px;
   }
-  .forecast-tabs {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 10px;
-    background: var(--md-surface-variant);
-    padding: 4px;
-    border-radius: 12px;
-  }
-  .forecast-tab {
-    flex: 1;
-    border: none;
-    background: transparent;
-    padding: 8px 12px;
-    border-radius: 8px;
+  .forecast-header {
     font-size: 12px;
     font-weight: 500;
-    cursor: pointer;
     color: var(--md-on-surface-variant);
-    font-family: inherit;
-    transition: all 0.2s;
+    margin-bottom: 8px;
     letter-spacing: 0.3px;
-  }
-  .forecast-tab.active {
-    background: var(--md-surface);
-    color: var(--md-primary);
-    box-shadow: var(--md-elevation-1);
+    padding: 0 4px;
   }
   .forecast-scroll {
     display: flex;
@@ -758,57 +739,35 @@ async function ensureWeather(data) {
   return data;
 }
 
-// ============ Open-Meteo 미세먼지 예보 API ============
-async function fetchAirForecast(lat, lon) {
-  try {
-    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=pm10,pm2_5&timezone=Asia%2FSeoul&forecast_days=7`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!data.hourly) return null;
+// ============ WAQI 일별 예보 파싱 ============
+function parseWaqiForecast(d) {
+  // d.forecast.daily.pm25 = [{day: '2026-05-04', avg, min, max}, ...]
+  if (!d.forecast || !d.forecast.daily) return null;
+  const daily = d.forecast.daily;
+  const pm25List = daily.pm25 || [];
+  const pm10List = daily.pm10 || [];
 
-    const times = data.hourly.time || [];
-    const pm25s = data.hourly.pm2_5 || [];
-    const pm10s = data.hourly.pm10 || [];
+  // 날짜 기준으로 머지
+  const map = {};
+  pm25List.forEach(item => {
+    if (!map[item.day]) map[item.day] = { date: item.day };
+    map[item.day].pm25Aqi = item.avg;
+    map[item.day].pm25AqiMin = item.min;
+    map[item.day].pm25AqiMax = item.max;
+  });
+  pm10List.forEach(item => {
+    if (!map[item.day]) map[item.day] = { date: item.day };
+    map[item.day].pm10Aqi = item.avg;
+    map[item.day].pm10AqiMin = item.min;
+    map[item.day].pm10AqiMax = item.max;
+  });
 
-    // 시간별 데이터 (현재 시각 ±기준)
-    const hourly = times.map((t, i) => ({
-      time: t,
-      pm25: pm25s[i],
-      pm10: pm10s[i]
-    }));
-
-    // 일별로 그룹핑 (각 날짜의 평균)
-    const dailyMap = {};
-    hourly.forEach(h => {
-      const date = h.time.slice(0, 10); // YYYY-MM-DD
-      if (!dailyMap[date]) {
-        dailyMap[date] = { pm25Sum: 0, pm10Sum: 0, pm25Count: 0, pm10Count: 0 };
-      }
-      if (h.pm25 != null) {
-        dailyMap[date].pm25Sum += h.pm25;
-        dailyMap[date].pm25Count++;
-      }
-      if (h.pm10 != null) {
-        dailyMap[date].pm10Sum += h.pm10;
-        dailyMap[date].pm10Count++;
-      }
-    });
-
-    const daily = Object.keys(dailyMap).sort().map(date => {
-      const m = dailyMap[date];
-      return {
-        date: date,
-        pm25: m.pm25Count > 0 ? m.pm25Sum / m.pm25Count : null,
-        pm10: m.pm10Count > 0 ? m.pm10Sum / m.pm10Count : null
-      };
-    });
-
-    return { hourly, daily };
-  } catch (e) {
-    console.error('예보 가져오기 실패:', e);
-    return null;
-  }
+  // 정렬 + AQI를 농도로 변환
+  return Object.values(map).sort((a, b) => a.date.localeCompare(b.date)).map(d => ({
+    date: d.date,
+    pm25: aqiToPm25(d.pm25Aqi),
+    pm10: aqiToPm10(d.pm10Aqi)
+  }));
 }
 
 // ============ 배경색 변경 ============
@@ -914,7 +873,8 @@ function parseWaqiResponse(d) {
     stationName: (d.city && d.city.name) || '알 수 없음',
     time: (d.time && (d.time.iso || d.time.s)) || new Date().toISOString(),
     stationUid: d.idx,
-    _geo: (d.city && d.city.geo) ? d.city.geo : null
+    _geo: (d.city && d.city.geo) ? d.city.geo : null,
+    _forecast: parseWaqiForecast(d)
   };
 }
 
@@ -1045,20 +1005,45 @@ function createCard(query, label, data, isFavorite) {
     extraHtml = '<div class="extra-pollutants">' + extraItems.join('') + '</div>';
   }
 
-  // 예보 영역 (좌표 있을 때만, 비동기로 채워짐)
+  // 예보 영역 (WAQI 일별 예보 - 데이터 있을 때만)
   let forecastHtml = '';
-  if (data._geo && data._geo.length === 2) {
-    const fcId = 'fc_' + Math.random().toString(36).slice(2, 9);
-    forecastHtml =
-      '<div class="forecast-section" data-fc-id="' + fcId + '" data-lat="' + data._geo[0] + '" data-lon="' + data._geo[1] + '">' +
-        '<div class="forecast-tabs">' +
-          '<button class="forecast-tab active" data-mode="hourly">시간별 (24시간)</button>' +
-          '<button class="forecast-tab" data-mode="daily">일별 (일주일)</button>' +
-        '</div>' +
-        '<div class="forecast-scroll" id="' + fcId + '">' +
-          '<div class="forecast-loading"><span class="spinner"></span>예보 불러오는 중...</div>' +
-        '</div>' +
-      '</div>';
+  if (data._forecast && data._forecast.length > 0) {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const items = data._forecast.filter(d => d.date >= todayStr).slice(0, 7);
+
+    if (items.length > 0) {
+      const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+      const itemsHtml = items.map((d, idx) => {
+        const date = new Date(d.date + 'T00:00:00');
+        const isToday = d.date === todayStr;
+        const grade = getOverallGrade(d.pm25, d.pm10);
+        const emoji = grade ? grade.emoji : '❓';
+        const gradeName = grade ? grade.name : '-';
+        const pm25Display = d.pm25 != null ? Math.round(d.pm25) : '-';
+
+        let dayLabel;
+        if (isToday) {
+          dayLabel = '오늘';
+        } else if (idx === 1) {
+          dayLabel = '내일';
+        } else {
+          dayLabel = (date.getMonth() + 1) + '/' + date.getDate() + ' (' + dayNames[date.getDay()] + ')';
+        }
+
+        return '<div class="forecast-item' + (isToday ? ' now' : '') + '">' +
+          '<div class="forecast-time">' + dayLabel + '</div>' +
+          '<div class="forecast-emoji">' + emoji + '</div>' +
+          '<div class="forecast-value">' + pm25Display + '<span class="forecast-unit"> ㎍</span></div>' +
+          '<div class="forecast-grade grade-text-' + (grade ? grade.idx : 0) + '">' + gradeName + '</div>' +
+        '</div>';
+      }).join('');
+
+      forecastHtml =
+        '<div class="forecast-section">' +
+          '<div class="forecast-header">📅 일별 예보 (PM2.5)</div>' +
+          '<div class="forecast-scroll">' + itemsHtml + '</div>' +
+        '</div>';
+    }
   }
 
   return '<div class="card" data-query="' + queryEsc + '">' +
@@ -1426,131 +1411,9 @@ async function searchAndDisplay(query, label) {
 }
 
 // ============ 예보 렌더링 ============
-const forecastCache = {}; // 같은 좌표 중복 호출 방지
-
-async function loadForecastFor(section, lat, lon) {
-  const fcId = section.querySelector('.forecast-scroll').id;
-  const cacheKey = lat.toFixed(3) + ',' + lon.toFixed(3);
-
-  let forecast;
-  if (forecastCache[cacheKey]) {
-    forecast = forecastCache[cacheKey];
-  } else {
-    forecast = await fetchAirForecast(lat, lon);
-    if (forecast) forecastCache[cacheKey] = forecast;
-  }
-
-  const scrollDiv = section.querySelector('.forecast-scroll');
-  if (!forecast) {
-    scrollDiv.innerHTML = '<div class="forecast-loading">예보를 불러올 수 없어요</div>';
-    return;
-  }
-
-  // 기본: 시간별 모드로 시작
-  renderForecast(section, forecast, 'hourly');
-
-  // 탭 클릭 핸들러
-  section.querySelectorAll('.forecast-tab').forEach(tab => {
-    tab.onclick = () => {
-      section.querySelectorAll('.forecast-tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      renderForecast(section, forecast, tab.dataset.mode);
-    };
-  });
-}
-
-function renderForecast(section, forecast, mode) {
-  const scrollDiv = section.querySelector('.forecast-scroll');
-  const now = new Date();
-  const nowHour = now.getHours();
-  const nowDate = now.toISOString().slice(0, 10);
-
-  if (mode === 'hourly') {
-    // 현재 시각부터 다음 24시간
-    const items = forecast.hourly.filter(h => {
-      const hTime = new Date(h.time);
-      return hTime >= now || (hTime.getDate() === now.getDate() && hTime.getHours() === nowHour);
-    }).slice(0, 24);
-
-    if (items.length === 0) {
-      scrollDiv.innerHTML = '<div class="forecast-loading">데이터 없음</div>';
-      return;
-    }
-
-    scrollDiv.innerHTML = items.map((h, idx) => {
-      const t = new Date(h.time);
-      const hour = t.getHours();
-      const isNow = idx === 0;
-      const grade = getOverallGrade(h.pm25, h.pm10);
-      const emoji = grade ? grade.emoji : '❓';
-      const gradeName = grade ? grade.name : '-';
-      const pm25Display = h.pm25 != null ? Math.round(h.pm25) : '-';
-
-      let timeLabel;
-      if (isNow) {
-        timeLabel = '지금';
-      } else if (hour === 0) {
-        timeLabel = (t.getMonth() + 1) + '/' + t.getDate();
-      } else {
-        timeLabel = hour + '시';
-      }
-
-      return '<div class="forecast-item' + (isNow ? ' now' : '') + '">' +
-        '<div class="forecast-time">' + timeLabel + '</div>' +
-        '<div class="forecast-emoji">' + emoji + '</div>' +
-        '<div class="forecast-value">' + pm25Display + '<span class="forecast-unit"> ㎍</span></div>' +
-        '<div class="forecast-grade grade-text-' + (grade ? grade.idx : 0) + '">' + gradeName + '</div>' +
-      '</div>';
-    }).join('');
-  } else {
-    // 일별 (오늘 + 일주일)
-    const items = forecast.daily.filter(d => d.date >= nowDate).slice(0, 7);
-
-    if (items.length === 0) {
-      scrollDiv.innerHTML = '<div class="forecast-loading">데이터 없음</div>';
-      return;
-    }
-
-    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-
-    scrollDiv.innerHTML = items.map((d, idx) => {
-      const date = new Date(d.date + 'T00:00:00');
-      const isToday = d.date === nowDate;
-      const grade = getOverallGrade(d.pm25, d.pm10);
-      const emoji = grade ? grade.emoji : '❓';
-      const gradeName = grade ? grade.name : '-';
-      const pm25Display = d.pm25 != null ? Math.round(d.pm25) : '-';
-
-      let label;
-      if (isToday) {
-        label = '오늘';
-      } else if (idx === 1) {
-        label = '내일';
-      } else {
-        label = (date.getMonth() + 1) + '/' + date.getDate() + ' (' + dayNames[date.getDay()] + ')';
-      }
-
-      return '<div class="forecast-item' + (isToday ? ' now' : '') + '">' +
-        '<div class="forecast-time">' + label + '</div>' +
-        '<div class="forecast-emoji">' + emoji + '</div>' +
-        '<div class="forecast-value">' + pm25Display + '<span class="forecast-unit"> ㎍</span></div>' +
-        '<div class="forecast-grade grade-text-' + (grade ? grade.idx : 0) + '">' + gradeName + '</div>' +
-      '</div>';
-    }).join('');
-  }
-}
+// (예보는 WAQI에서 일별로 함께 받아와 카드 만들 때 직접 렌더링)
 
 function attachCardListeners() {
-  // 예보 섹션 자동 로드
-  document.querySelectorAll('.forecast-section').forEach(section => {
-    if (section.dataset.loaded === 'true') return;
-    const lat = parseFloat(section.dataset.lat);
-    const lon = parseFloat(section.dataset.lon);
-    if (isNaN(lat) || isNaN(lon)) return;
-    section.dataset.loaded = 'true';
-    loadForecastFor(section, lat, lon);
-  });
-
   document.querySelectorAll('.star-btn').forEach(btn => {
     btn.onclick = async (e) => {
       e.stopPropagation();
