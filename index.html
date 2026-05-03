@@ -587,9 +587,11 @@ const GRADES = [
 
 function getGrade(value, type) {
   if (value === null || value === undefined || isNaN(value)) return null;
+  // 미세미세 기준은 정수 단위(예: 9~10 사이는 빈 구간)이므로 반올림 후 비교
+  const rounded = Math.round(value);
   for (const g of GRADES) {
     const range = type === 'pm25' ? g.pm25 : g.pm10;
-    if (value >= range[0] && value <= range[1]) return g;
+    if (rounded >= range[0] && rounded <= range[1]) return g;
   }
   return GRADES[7];
 }
@@ -597,7 +599,6 @@ function getGrade(value, type) {
 function getOverallGrade(pm25, pm10) {
   const g25 = getGrade(pm25, 'pm25');
   const g10 = getGrade(pm10, 'pm10');
-  console.log('[등급계산] PM2.5:', pm25, '→', g25 ? g25.name : 'null', '| PM10:', pm10, '→', g10 ? g10.name : 'null');
   if (!g25 && !g10) return null;
   if (!g25) return g10;
   if (!g10) return g25;
